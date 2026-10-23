@@ -43,7 +43,7 @@
             tbody.querySelectorAll(".btn-ack-inline").forEach(btn => {
               btn.addEventListener("click", function () {
                 const id = this.getAttribute("data-id");
-                acknowledgeAlert(id);
+                acknowledgeAlert(id, this);
               });
             });
           }
@@ -81,7 +81,7 @@
           const ackBtn = document.getElementById("btnSpotlightAcknowledge");
           if (ackBtn) {
             ackBtn.onclick = function () {
-              acknowledgeAlert(act.id);
+              acknowledgeAlert(act.id, this);
             };
           }
         } else {
@@ -95,18 +95,33 @@
       .catch(err => console.error("Spotlight error:", err));
   }
 
-  function acknowledgeAlert(alertId) {
+  function acknowledgeAlert(alertId, btnEl) {
+    if (btnEl && window.VA && window.VA.setBtnLoading) {
+      window.VA.setBtnLoading(btnEl, true, "Acknowledging…");
+    }
+
     fetch(`/api/alerts/${alertId}/acknowledge`, { method: "POST" })
       .then(r => r.json())
       .then(res => {
         if (res.success) {
+          if (window.VA && window.VA.announce) {
+            window.VA.announce(res.message);
+          }
           loadSpotlightStatus();
           loadAlerts();
         } else {
           alert(res.error || "Failed to acknowledge alert.");
+          if (btnEl && window.VA && window.VA.setBtnLoading) {
+            window.VA.setBtnLoading(btnEl, false);
+          }
         }
       })
-      .catch(err => console.error("Acknowledge error:", err));
+      .catch(err => {
+        console.error("Acknowledge error:", err);
+        if (btnEl && window.VA && window.VA.setBtnLoading) {
+          window.VA.setBtnLoading(btnEl, false);
+        }
+      });
   }
 
   function setupStatusFilter() {
@@ -130,8 +145,14 @@
     form.addEventListener("submit", function (e) {
       e.preventDefault();
       const input = document.getElementById("inputAlertThreshold");
+      const submitBtn = form.querySelector('button[type="submit"]');
       const feedback = document.getElementById("alertsThresholdFeedback");
       const val = parseFloat(input.value);
+
+      if (window.VA && window.VA.setBtnLoading) {
+        window.VA.setBtnLoading(submitBtn, true, "Saving…");
+      }
+      input.disabled = true;
 
       fetch("/api/settings/threshold", {
         method: "POST",
@@ -143,6 +164,9 @@
           if (res.success) {
             feedback.className = "small mt-2 text-success";
             feedback.textContent = res.message;
+            if (window.VA && window.VA.announce) {
+              window.VA.announce(res.message);
+            }
             loadSpotlightStatus();
             loadAlerts();
           } else {
@@ -152,7 +176,13 @@
         })
         .catch(err => {
           feedback.className = "small mt-2 text-danger";
-          feedback.textContent = "Network error updating threshold.";
+          feedback.textContent = "Network error updating threshold. Please retry.";
+        })
+        .finally(() => {
+          input.disabled = false;
+          if (window.VA && window.VA.setBtnLoading) {
+            window.VA.setBtnLoading(submitBtn, false);
+          }
         });
     });
   }

@@ -12,7 +12,53 @@
     pollingTimer: null,
     isAutoRefresh: true,
     lastStatus: null,
-    listeners: []
+    listeners: [],
+    loaderDismissed: false
+  };
+
+  // Screen reader accessible announcements
+  window.VA.announce = function (message) {
+    const liveEl = document.getElementById("vaA11yLive");
+    if (liveEl) {
+      liveEl.textContent = message;
+    }
+  };
+
+  // Helper to safely set button loading state and avoid double-submissions
+  window.VA.setBtnLoading = function (btn, isLoading, loadingText) {
+    if (!btn) return;
+    if (isLoading) {
+      btn.dataset.originalContent = btn.innerHTML;
+      btn.disabled = true;
+      const text = loadingText || "Loading…";
+      btn.innerHTML = `<span class="va-spinner va-spinner-sm me-1" aria-hidden="true"></span><span>${text}</span>`;
+    } else {
+      if (btn.dataset.originalContent) {
+        btn.innerHTML = btn.dataset.originalContent;
+      }
+      btn.disabled = false;
+    }
+  };
+
+  // Hide initial loading screen safely
+  window.VA.hideAppLoader = function (statusMsg) {
+    if (window.VA.loaderDismissed) return;
+    window.VA.loaderDismissed = true;
+    const loader = document.getElementById("vaAppLoader");
+    const statusEl = document.getElementById("vaLoaderStatus");
+    if (statusEl && statusMsg) {
+      statusEl.textContent = statusMsg;
+    }
+    if (loader) {
+      setTimeout(function () {
+        loader.classList.add("loaded");
+        setTimeout(function () {
+          if (loader.parentNode) {
+            loader.parentNode.removeChild(loader);
+          }
+        }, 500);
+      }, 200);
+    }
   };
 
   // Register state change listener
@@ -117,6 +163,13 @@
   }
 
   function pollGlobalStatus() {
+    const btnRefresh = document.getElementById("btnRefreshNow");
+    if (btnRefresh && !btnRefresh.classList.contains("refreshing")) {
+      btnRefresh.classList.add("refreshing");
+      const icon = btnRefresh.querySelector("svg");
+      if (icon) icon.classList.add("va-spinner");
+    }
+
     fetch("/api/status")
       .then(res => {
         if (!res.ok) throw new Error("HTTP " + res.status);
@@ -129,6 +182,7 @@
         window.VA.listeners.forEach(fn => {
           try { fn(data); } catch (e) { console.error("Listener error:", e); }
         });
+        window.VA.hideAppLoader("Monitoring active");
       })
       .catch(err => {
         console.warn("Status polling error:", err);
@@ -137,6 +191,17 @@
         if (pill && text) {
           pill.className = "status-pill offline";
           text.textContent = "API Disconnected";
+        }
+        window.VA.hideAppLoader("Offline fallback active");
+      })
+      .finally(() => {
+        if (btnRefresh) {
+          setTimeout(() => {
+            btnRefresh.classList.remove("refreshing");
+            btnRefresh.disabled = false;
+            const icon = btnRefresh.querySelector("svg");
+            if (icon) icon.classList.remove("va-spinner");
+          }, 400);
         }
       });
   }
@@ -150,14 +215,18 @@
         window.VA.isAutoRefresh = this.checked;
         if (window.VA.isAutoRefresh) {
           startPolling();
+          window.VA.announce("Automatic refresh enabled");
         } else {
           stopPolling();
+          window.VA.announce("Automatic refresh paused");
         }
       });
     }
 
     if (btnRefreshNow) {
       btnRefreshNow.addEventListener("click", function () {
+        this.disabled = true;
+        window.VA.announce("Refreshing telemetry data");
         pollGlobalStatus();
       });
     }
@@ -204,5 +273,10 @@
     setupAutoRefresh();
     setupDemoSpike();
     pollGlobalStatus();
+
+    // Safety fallback: ensure initial loader is never permanently covering the application
+    setTimeout(function () {
+      window.VA.hideAppLoader("System ready");
+    }, 2200);
   });
 })();

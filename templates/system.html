@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Sensor &amp; System - Virtual Atmosphere{% endblock %}
+{% block title %}Sensor &amp; System{% endblock %}
 {% block header_title %}Sensor &amp; System Diagnostics{% endblock %}
 
 {% block content %}
@@ -235,35 +235,76 @@ document.addEventListener("DOMContentLoaded", function() {
   setInterval(loadSystemDiagnostics, 5000);
 
   // Mode Switchers
-  document.getElementById("btnSetDemoMode").addEventListener("click", function() {
+  const btnDemo = document.getElementById("btnSetDemoMode");
+  const btnLive = document.getElementById("btnSetLiveMode");
+
+  btnDemo.addEventListener("click", function() {
+    if (window.VA && window.VA.setBtnLoading) {
+      window.VA.setBtnLoading(btnDemo, true, "Switching…");
+      btnLive.disabled = true;
+    }
     fetch("/api/mode", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ mode: "demo" })
-    }).then(r => r.json()).then(res => {
-      loadSystemDiagnostics();
-      alert(res.message);
-      location.reload();
-    });
+    })
+      .then(r => r.json())
+      .then(res => {
+        loadSystemDiagnostics();
+        if (window.VA && window.VA.announce) {
+          window.VA.announce(res.message);
+        }
+        location.reload();
+      })
+      .catch(err => {
+        console.error("Mode switch error:", err);
+        if (window.VA && window.VA.setBtnLoading) {
+          window.VA.setBtnLoading(btnDemo, false);
+          btnLive.disabled = false;
+        }
+      });
   });
 
-  document.getElementById("btnSetLiveMode").addEventListener("click", function() {
+  btnLive.addEventListener("click", function() {
+    if (window.VA && window.VA.setBtnLoading) {
+      window.VA.setBtnLoading(btnLive, true, "Switching…");
+      btnDemo.disabled = true;
+    }
     fetch("/api/mode", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ mode: "live" })
-    }).then(r => r.json()).then(res => {
-      loadSystemDiagnostics();
-      alert(res.message);
-      location.reload();
-    });
+    })
+      .then(r => r.json())
+      .then(res => {
+        loadSystemDiagnostics();
+        if (window.VA && window.VA.announce) {
+          window.VA.announce(res.message);
+        }
+        location.reload();
+      })
+      .catch(err => {
+        console.error("Mode switch error:", err);
+        if (window.VA && window.VA.setBtnLoading) {
+          window.VA.setBtnLoading(btnLive, false);
+          btnDemo.disabled = false;
+        }
+      });
   });
 
   // Sampling form
-  document.getElementById("formSamplingInterval").addEventListener("submit", function(e) {
+  const samplingForm = document.getElementById("formSamplingInterval");
+  samplingForm.addEventListener("submit", function(e) {
     e.preventDefault();
-    const interval = parseInt(document.getElementById("inputSamplingInterval").value);
+    const intervalInput = document.getElementById("inputSamplingInterval");
+    const interval = parseInt(intervalInput.value);
     const feedback = document.getElementById("sysSamplingFeedback");
+    const submitBtn = samplingForm.querySelector('button[type="submit"]');
+
+    if (window.VA && window.VA.setBtnLoading) {
+      window.VA.setBtnLoading(submitBtn, true, "Updating…");
+    }
+    intervalInput.disabled = true;
 
     fetch("/api/settings/sampling_interval", {
       method: "POST",
@@ -275,9 +316,22 @@ document.addEventListener("DOMContentLoaded", function() {
         if (res.success) {
           feedback.className = "small mt-2 text-success";
           feedback.textContent = res.message;
+          if (window.VA && window.VA.announce) {
+            window.VA.announce(res.message);
+          }
         } else {
           feedback.className = "small mt-2 text-danger";
           feedback.textContent = res.error;
+        }
+      })
+      .catch(err => {
+        feedback.className = "small mt-2 text-danger";
+        feedback.textContent = "Error updating sampling interval.";
+      })
+      .finally(() => {
+        intervalInput.disabled = false;
+        if (window.VA && window.VA.setBtnLoading) {
+          window.VA.setBtnLoading(submitBtn, false);
         }
       });
   });

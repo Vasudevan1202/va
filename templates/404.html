@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}404 Not Found{% endblock %}
+{% block header_title %}404 - Page Not Found{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center py-5">
+  <div class="col-12 col-md-8 col-lg-6 text-center">
+    <div class="va-card p-5">
+      <div class="mb-4">
+        <img src="{{ url_for('static', filename='img/va-logo-card.png') }}" alt="Virtual Atmosphere Logo" width="88" height="88" class="rounded-3 shadow-sm border border-secondary border-opacity-25">
+      </div>
+
+      <div class="mb-3">
+        <span class="badge bg-danger bg-opacity-25 text-danger border border-danger border-opacity-25 px-3 py-2 fs-6">
+          HTTP 404 &bull; Page Not Found
+        </span>
+      </div>
+
+      <h2 class="text-white fw-bold mb-3">Atmospheric Coordinate Not Found</h2>
+      
+      <p class="text-secondary mb-4 leading-relaxed">
+        The requested URL path does not exist on this Virtual Atmosphere monitoring station. The resource may have been relocated or the URL might be mistyped.
+      </p>
+
+      <div class="p-3 mb-4 rounded bg-secondary bg-opacity-25 border border-secondary border-opacity-25 text-start small">
+        <div class="text-cyan fw-semibold mb-1">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="16" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+          </svg>
+          Hardware Sensor Notice
+        </div>
+        <div class="text-secondary">
+          A missing or offline BMP280 sensor does not cause a 404 web error. The web server remains fully operational. If you are diagnosing hardware connectivity, please check the system diagnostics.
+        </div>
+      </div>
+
+      <div class="d-flex justify-content-center gap-3 flex-wrap">
+        <a href="{{ url_for('dashboard') }}" class="va-btn va-btn-primary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1">
+            <rect x="3" y="3" width="7" height="7"></rect>
+            <rect x="14" y="3" width="7" height="7"></rect>
+            <rect x="14" y="14" width="7" height="7"></rect>
+            <rect x="3" y="14" width="7" height="7"></rect>
+          </svg>
+          Return to Dashboard
+        </a>
+        <a href="{{ url_for('live_monitor') }}" class="va-btn va-btn-secondary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+          </svg>
+          Live Monitor
+        </a>
+        <a href="{{ url_for('system') }}" class="va-btn va-btn-secondary">
+          Sensor Diagnostics
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,24 @@
+{
+  "name": "Virtual Atmosphere",
+  "short_name": "VA",
+  "description": "Understand Your Atmosphere. Real-time environmental monitoring platform.",
+  "icons": [
+    {
+      "src": "/static/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "theme_color": "#07111F",
+  "background_color": "#07111F",
+  "display": "standalone",
+  "start_url": "/dashboard",
+  "orientation": "portrait-primary"
+}

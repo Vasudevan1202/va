@@ -88,8 +88,16 @@
 
   function loadChartData() {
     let url = `/api/readings?range=${currentRangePreset}`;
+    const presetGroup = document.getElementById("historyPresetGroup");
+    if (presetGroup) {
+      presetGroup.querySelectorAll("button").forEach(b => b.disabled = true);
+    }
+
     fetch(url)
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return r.json();
+      })
       .then(data => {
         const readings = data.readings || [];
         const summary = data.summary || {};
@@ -128,7 +136,14 @@
           document.getElementById("statPressAvg").textContent = "Avg: --";
         }
       })
-      .catch(err => console.error("Error loading historical chart:", err));
+      .catch(err => {
+        console.error("Error loading historical chart:", err);
+      })
+      .finally(() => {
+        if (presetGroup) {
+          presetGroup.querySelectorAll("button").forEach(b => b.disabled = false);
+        }
+      });
   }
 
   function loadHistoryTable() {
@@ -136,21 +151,33 @@
     if (filterStart) url += `&start=${encodeURIComponent(filterStart)}`;
     if (filterEnd) url += `&end=${encodeURIComponent(filterEnd)}`;
 
+    const prevBtn = document.getElementById("btnPrevPage");
+    const nextBtn = document.getElementById("btnNextPage");
+    const summary = document.getElementById("historyTableSummary");
+    if (prevBtn) prevBtn.disabled = true;
+    if (nextBtn) nextBtn.disabled = true;
+    if (summary) {
+      summary.innerHTML = `<span class="va-spinner va-spinner-sm me-1" aria-hidden="true"></span> Fetching records…`;
+    }
+
     fetch(url)
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return r.json();
+      })
       .then(data => {
         const tbody = document.getElementById("historyTbody");
-        const summary = document.getElementById("historyTableSummary");
         const pageInd = document.getElementById("pageIndicator");
-        const prevBtn = document.getElementById("btnPrevPage");
-        const nextBtn = document.getElementById("btnNextPage");
 
         const readings = data.readings || [];
-        summary.textContent = `Showing ${readings.length} of ${data.total} records`;
-        pageInd.textContent = `Page ${data.page} of ${data.total_pages}`;
+        if (summary) summary.textContent = `Showing ${readings.length} of ${data.total} records`;
+        if (pageInd) pageInd.textContent = `Page ${data.page} of ${data.total_pages}`;
+        if (window.VA && window.VA.announce) {
+          window.VA.announce(`Loaded page ${data.page} of ${data.total_pages}, ${readings.length} records`);
+        }
 
-        prevBtn.disabled = !data.has_prev;
-        nextBtn.disabled = !data.has_next;
+        if (prevBtn) prevBtn.disabled = !data.has_prev;
+        if (nextBtn) nextBtn.disabled = !data.has_next;
 
         if (readings.length === 0) {
           tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-secondary">No records found matching query criteria.</td></tr>`;
@@ -171,7 +198,16 @@
         // Update CSV Export link
         updateExportLink();
       })
-      .catch(err => console.error("History table error:", err));
+      .catch(err => {
+        console.error("History table error:", err);
+        const tbody = document.getElementById("historyTbody");
+        if (tbody) {
+          tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-danger">Error retrieving table records. Please retry.</td></tr>`;
+        }
+        if (summary) summary.textContent = "Error querying records";
+        if (prevBtn) prevBtn.disabled = currentPage <= 1;
+        if (nextBtn) nextBtn.disabled = false;
+      });
   }
 
   function updateExportLink() {
@@ -186,6 +222,21 @@
       url += `range=${currentRangePreset}`;
     }
     btn.setAttribute("href", url);
+
+    // Attach click feedback once
+    if (!btn.dataset.feedbackAttached) {
+      btn.dataset.feedbackAttached = "true";
+      btn.addEventListener("click", function () {
+        const origHtml = this.innerHTML;
+        this.innerHTML = `<span class="va-spinner va-spinner-sm me-1" aria-hidden="true"></span> Preparing CSV…`;
+        if (window.VA && window.VA.announce) {
+          window.VA.announce("Preparing CSV export download");
+        }
+        setTimeout(() => {
+          this.innerHTML = origHtml;
+        }, 1800);
+      });
+    }
   }
 
   function setupFilters() {

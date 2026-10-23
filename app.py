@@ -2,7 +2,7 @@ import io
 import csv
 import logging
 from datetime import datetime, timezone
-from flask import Flask, jsonify, request, render_template, redirect, url_for, Response
+from flask import Flask, jsonify, request, render_template, redirect, url_for, Response, send_from_directory
 from config import Config
 import database
 from sensor_service import SensorService
@@ -73,6 +73,23 @@ def create_app(test_config=None) -> Flask:
             "VERSION": Config.VERSION,
             "app_mode": app.sensor_service.mode
         }
+
+    # ==========================================
+    # Favicon & Brand Asset Routes
+    # ==========================================
+
+    @app.route("/favicon.ico")
+    def favicon():
+        return send_from_directory(app.static_folder, "favicon.ico", mimetype="image/vnd.microsoft.icon")
+
+    @app.route("/site.webmanifest")
+    def site_manifest():
+        return send_from_directory(app.static_folder, "site.webmanifest", mimetype="application/manifest+json")
+
+    @app.route("/apple-touch-icon.png")
+    @app.route("/apple-touch-icon-precomposed.png")
+    def apple_touch_icon():
+        return send_from_directory(app.static_folder, "apple-touch-icon.png", mimetype="image/png")
 
     # ==========================================
     # HTML Page Routes
@@ -421,14 +438,14 @@ def create_app(test_config=None) -> Flask:
     def not_found_error(error):
         if request.path.startswith("/api/"):
             return jsonify({"error": "Resource not found", "status_code": 404}), 404
-        return render_template("base.html", error_title="404 - Page Not Found", error_message="The requested page could not be located."), 404
+        return render_template("404.html"), 404
 
     @app.errorhandler(500)
     def internal_error(error):
         logger.error(f"Internal Server Error: {error}")
         if request.path.startswith("/api/"):
             return jsonify({"error": "Internal server error", "status_code": 500}), 500
-        return render_template("base.html", error_title="500 - Server Error", error_message="An unexpected server error occurred."), 500
+        return render_template("500.html"), 500
 
     return app
 

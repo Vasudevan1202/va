@@ -136,7 +136,10 @@
 
   function fetchLatestReadings() {
     fetch("/api/readings/latest")
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        return res.json();
+      })
       .then(data => {
         const latest = data.latest;
         const trend = data.trend || {};
@@ -144,46 +147,55 @@
         const sensor = data.sensor || {};
         const alertInfo = data.alert || {};
 
+        const tempEl = document.getElementById("cardTempVal");
+        const pressEl = document.getElementById("cardPressVal");
+        if (tempEl) tempEl.classList.remove("va-skeleton", "skeleton-metric");
+        if (pressEl) pressEl.classList.remove("va-skeleton", "skeleton-metric");
+
         if (latest) {
           // Temperature Card
-          document.getElementById("cardTempVal").textContent = latest.temperature_c.toFixed(1);
+          if (tempEl) tempEl.textContent = latest.temperature_c.toFixed(1);
           const tDelta = trend.temperature_delta_c || 0;
           const tBadge = document.getElementById("tempTrendBadge");
           const tVal = document.getElementById("tempTrendVal");
-          tVal.textContent = Math.abs(tDelta).toFixed(2);
+          if (tVal) tVal.textContent = Math.abs(tDelta).toFixed(2);
 
-          if (tDelta > 0.05) {
-            tBadge.className = "trend-badge trend-up";
-            tBadge.firstElementChild.textContent = "▲";
-          } else if (tDelta < -0.05) {
-            tBadge.className = "trend-badge trend-down";
-            tBadge.firstElementChild.textContent = "▼";
-          } else {
-            tBadge.className = "trend-badge trend-neutral";
-            tBadge.firstElementChild.textContent = "–";
+          if (tBadge) {
+            if (tDelta > 0.05) {
+              tBadge.className = "trend-badge trend-up";
+              tBadge.firstElementChild.textContent = "▲";
+            } else if (tDelta < -0.05) {
+              tBadge.className = "trend-badge trend-down";
+              tBadge.firstElementChild.textContent = "▼";
+            } else {
+              tBadge.className = "trend-badge trend-neutral";
+              tBadge.firstElementChild.textContent = "–";
+            }
           }
 
           // Pressure Card
-          document.getElementById("cardPressVal").textContent = latest.pressure_hpa.toFixed(1);
+          if (pressEl) pressEl.textContent = latest.pressure_hpa.toFixed(1);
           const pDelta = trend.pressure_delta_hpa || 0;
           const pBadge = document.getElementById("pressTrendBadge");
           const pVal = document.getElementById("pressTrendVal");
-          pVal.textContent = Math.abs(pDelta).toFixed(2);
+          if (pVal) pVal.textContent = Math.abs(pDelta).toFixed(2);
 
-          if (pDelta > 0.1) {
-            pBadge.className = "trend-badge trend-up";
-            pBadge.firstElementChild.textContent = "▲";
-          } else if (pDelta < -0.1) {
-            pBadge.className = "trend-badge trend-down";
-            pBadge.firstElementChild.textContent = "▼";
-          } else {
-            pBadge.className = "trend-badge trend-neutral";
-            pBadge.firstElementChild.textContent = "–";
+          if (pBadge) {
+            if (pDelta > 0.1) {
+              pBadge.className = "trend-badge trend-up";
+              pBadge.firstElementChild.textContent = "▲";
+            } else if (pDelta < -0.1) {
+              pBadge.className = "trend-badge trend-down";
+              pBadge.firstElementChild.textContent = "▼";
+            } else {
+              pBadge.className = "trend-badge trend-neutral";
+              pBadge.firstElementChild.textContent = "–";
+            }
           }
         } else {
           // No readings yet
-          document.getElementById("cardTempVal").textContent = "--.-";
-          document.getElementById("cardPressVal").textContent = "----.-";
+          if (tempEl) tempEl.textContent = "--.-";
+          if (pressEl) pressEl.textContent = "----.-";
         }
 
         // Today's Stats
@@ -243,8 +255,22 @@
   }
 
   function fetchChartData(chartType, range) {
+    const selectorId = chartType === "temp" ? "tempRangeSelector" : "pressRangeSelector";
+    const group = document.getElementById(selectorId);
+    const summaryEl = document.getElementById(chartType === "temp" ? "tempChartSummary" : "pressChartSummary");
+
+    if (group) {
+      group.querySelectorAll("button").forEach(b => b.disabled = true);
+    }
+    if (summaryEl) {
+      summaryEl.innerHTML = `<span class="va-spinner va-spinner-sm me-1" aria-hidden="true"></span> Loading ${range} data…`;
+    }
+
     fetch(`/api/readings?range=${range}`)
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        return res.json();
+      })
       .then(data => {
         const readings = data.readings || [];
         const summary = data.summary || {};
@@ -262,11 +288,10 @@
           tempChart.data.datasets[0].data = values;
           tempChart.update();
 
-          const summaryEl = document.getElementById("tempChartSummary");
           if (summaryEl) {
             summaryEl.textContent = summary.count > 0
               ? `${summary.count} readings | Min: ${summary.temp_min}°C | Max: ${summary.temp_max}°C | Avg: ${summary.temp_avg}°C`
-              : "No readings in this range.";
+              : "No readings recorded in this range.";
           }
         } else if (chartType === "press" && pressChart) {
           const values = readings.map(r => r.pressure_hpa);
@@ -274,15 +299,24 @@
           pressChart.data.datasets[0].data = values;
           pressChart.update();
 
-          const summaryEl = document.getElementById("pressChartSummary");
           if (summaryEl) {
             summaryEl.textContent = summary.count > 0
               ? `${summary.count} readings | Min: ${summary.press_min} hPa | Max: ${summary.press_max} hPa | Avg: ${summary.press_avg} hPa`
-              : "No readings in this range.";
+              : "No readings recorded in this range.";
           }
         }
       })
-      .catch(err => console.error("Error loading chart data:", err));
+      .catch(err => {
+        console.error("Error loading chart data:", err);
+        if (summaryEl) {
+          summaryEl.textContent = "Error loading chart records. Select another interval to retry.";
+        }
+      })
+      .finally(() => {
+        if (group) {
+          group.querySelectorAll("button").forEach(b => b.disabled = false);
+        }
+      });
   }
 
   function fetchRecentTable() {
@@ -345,8 +379,14 @@
       form.addEventListener("submit", function (e) {
         e.preventDefault();
         const input = document.getElementById("inputThreshold");
+        const submitBtn = form.querySelector('button[type="submit"]');
         const feedback = document.getElementById("thresholdFeedback");
         const thresholdVal = parseFloat(input.value);
+
+        if (window.VA && window.VA.setBtnLoading) {
+          window.VA.setBtnLoading(submitBtn, true, "Saving…");
+        }
+        input.disabled = true;
 
         fetch("/api/settings/threshold", {
           method: "POST",
@@ -358,6 +398,9 @@
             if (data.success) {
               feedback.className = "small mt-2 text-success";
               feedback.textContent = data.message;
+              if (window.VA && window.VA.announce) {
+                window.VA.announce(data.message);
+              }
               fetchLatestReadings();
             } else {
               feedback.className = "small mt-2 text-danger";
@@ -366,7 +409,13 @@
           })
           .catch(err => {
             feedback.className = "small mt-2 text-danger";
-            feedback.textContent = "Failed to update threshold.";
+            feedback.textContent = "Failed to update threshold. Please retry.";
+          })
+          .finally(() => {
+            input.disabled = false;
+            if (window.VA && window.VA.setBtnLoading) {
+              window.VA.setBtnLoading(submitBtn, false);
+            }
           });
       });
     }

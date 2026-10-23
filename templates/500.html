@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}500 Server Error{% endblock %}
+{% block header_title %}500 - Server Error{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center py-5">
+  <div class="col-12 col-md-8 col-lg-6 text-center">
+    <div class="va-card p-5">
+      <div class="mb-4">
+        <img src="{{ url_for('static', filename='img/va-logo-card.png') }}" alt="Virtual Atmosphere Logo" width="88" height="88" class="rounded-3 shadow-sm border border-secondary border-opacity-25">
+      </div>
+
+      <div class="mb-3">
+        <span class="badge bg-warning bg-opacity-25 text-warning border border-warning border-opacity-25 px-3 py-2 fs-6">
+          HTTP 500 &bull; Internal Server Error
+        </span>
+      </div>
+
+      <h2 class="text-white fw-bold mb-3">Telemetry Service Condition</h2>
+      
+      <p class="text-secondary mb-4 leading-relaxed">
+        The application encountered an unexpected internal condition while processing telemetry data. The event has been recorded in the server logs. No configuration or telemetry records were lost.
+      </p>
+
+      <div class="p-3 mb-4 rounded bg-secondary bg-opacity-25 border border-secondary border-opacity-25 text-start small">
+        <div class="text-warning fw-semibold mb-1">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+          Safe Fallback &amp; Security
+        </div>
+        <div class="text-secondary">
+          Internal stack traces and environment credentials are restricted for security. If the issue persists across repeated requests, verify the local SQLite database permissions and background sensor service status.
+        </div>
+      </div>
+
+      <div class="d-flex justify-content-center gap-3 flex-wrap">
+        <button onclick="window.location.reload()" class="va-btn va-btn-primary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <polyline points="1 20 1 14 7 14"></polyline>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+          </svg>
+          Retry Request
+        </button>
+        <a href="{{ url_for('dashboard') }}" class="va-btn va-btn-secondary">
+          Return to Dashboard
+        </a>
+        <a href="{{ url_for('system') }}" class="va-btn va-btn-secondary">
+          Sensor Diagnostics
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

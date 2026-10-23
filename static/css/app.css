@@ -943,3 +943,300 @@ a:hover {
   width: 14px;
   height: 14px;
 }
+
+/* ==========================================================================
+   Virtual Atmosphere - Branding, Loading Screen & Component Loading States
+   ========================================================================== */
+
+/* Sidebar Brand Logo */
+.sidebar-logo {
+  width: 38px;
+  height: 38px;
+  object-fit: contain;
+  border-radius: var(--radius-sm);
+  background-color: rgba(7, 17, 31, 0.7);
+  padding: 3px;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.sidebar-logo:hover {
+  border-color: var(--primary-cyan);
+  box-shadow: 0 0 10px rgba(81, 216, 255, 0.35);
+  transform: scale(1.04);
+}
+
+/* Initial Application Loading Screen */
+.va-initial-loader {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: var(--bg-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.4s ease-out, visibility 0.4s ease-out;
+}
+
+.va-initial-loader.loaded {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.loader-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 32px;
+  max-width: 440px;
+  width: 90%;
+}
+
+.loader-logo-wrapper {
+  position: relative;
+  width: 104px;
+  height: 104px;
+  margin-bottom: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.loader-logo {
+  width: 92px;
+  height: 92px;
+  object-fit: contain;
+  border-radius: var(--radius-md);
+  position: relative;
+  z-index: 2;
+  box-shadow: 0 6px 28px rgba(0, 0, 0, 0.6);
+  animation: vaLogoFadeIn 0.8s ease-out forwards;
+}
+
+.loader-glow-ring {
+  position: absolute;
+  top: -8px;
+  left: -8px;
+  right: -8px;
+  bottom: -8px;
+  border-radius: calc(var(--radius-md) + 8px);
+  background: radial-gradient(circle, rgba(81, 216, 255, 0.35) 0%, rgba(22, 119, 255, 0.15) 50%, transparent 75%);
+  z-index: 1;
+  animation: vaGlowPulse 2.4s ease-in-out infinite;
+}
+
+.loader-brand-title {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--text-white);
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+.loader-tagline {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--primary-cyan);
+  letter-spacing: 0.2px;
+  margin-bottom: 24px;
+}
+
+.loader-progress-track {
+  width: 100%;
+  max-width: 260px;
+  height: 4px;
+  background-color: rgba(36, 59, 80, 0.6);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+  margin-bottom: 14px;
+}
+
+.loader-progress-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 45%;
+  background: linear-gradient(90deg, transparent, var(--secondary-blue), var(--primary-cyan), transparent);
+  border-radius: 4px;
+  animation: vaIndeterminate 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.loader-status-text {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  min-height: 18px;
+}
+
+@keyframes vaLogoFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes vaGlowPulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.9;
+  }
+}
+
+@keyframes vaIndeterminate {
+  0% {
+    left: -45%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+/* Skeleton Loaders */
+.va-skeleton {
+  display: inline-block;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.04) 25%, rgba(81, 216, 255, 0.12) 50%, rgba(255, 255, 255, 0.04) 75%);
+  background-size: 200% 100%;
+  animation: vaSkeletonShimmer 1.5s infinite;
+  border-radius: var(--radius-sm);
+  color: transparent !important;
+  user-select: none;
+  pointer-events: none;
+}
+
+.skeleton-text {
+  height: 1em;
+  width: 80%;
+  vertical-align: middle;
+}
+
+.skeleton-metric {
+  height: 48px;
+  width: 120px;
+  border-radius: var(--radius-sm);
+}
+
+.skeleton-chart-container {
+  height: 220px;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  padding: 16px;
+  background-color: rgba(7, 17, 31, 0.3);
+  border-radius: var(--radius-md);
+  border: 1px dashed var(--border-color);
+}
+
+.skeleton-chart-bar {
+  flex: 1;
+  background: linear-gradient(180deg, rgba(81, 216, 255, 0.15) 0%, rgba(22, 119, 255, 0.05) 100%);
+  border-radius: 4px 4px 0 0;
+  animation: vaSkeletonShimmer 1.8s infinite;
+}
+
+@keyframes vaSkeletonShimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Branded Spinner */
+.va-spinner {
+  display: inline-block;
+  width: 15px;
+  height: 15px;
+  border: 2px solid rgba(81, 216, 255, 0.25);
+  border-top-color: var(--primary-cyan);
+  border-right-color: var(--secondary-blue);
+  border-radius: 50%;
+  animation: vaSpin 0.75s linear infinite;
+  vertical-align: middle;
+}
+
+.va-spinner-sm {
+  width: 13px;
+  height: 13px;
+  border-width: 2px;
+}
+
+.va-spinner-lg {
+  width: 28px;
+  height: 28px;
+  border-width: 3px;
+}
+
+@keyframes vaSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.btn-loading {
+  position: relative;
+  pointer-events: none;
+  opacity: 0.85;
+}
+
+.btn-loading .btn-text {
+  visibility: hidden;
+}
+
+.btn-loading .btn-spinner-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .va-initial-loader {
+    transition: none !important;
+  }
+  .loader-logo {
+    animation: none !important;
+  }
+  .loader-glow-ring {
+    animation: none !important;
+    opacity: 0.4 !important;
+  }
+  .loader-progress-bar {
+    animation: none !important;
+    width: 100% !important;
+    background: var(--primary-cyan) !important;
+  }
+  .va-skeleton,
+  .skeleton-chart-bar {
+    animation: none !important;
+    background: rgba(81, 216, 255, 0.08) !important;
+  }
+  .va-spinner {
+    animation-duration: 2s !important;
+  }
+}

@@ -126,7 +126,56 @@ Standard consumer weather applications rely on airport radar stations tens of ki
 
 ---
 
-## 8. Installation & Execution Instructions
+## 8. Branding, Favicons & Loading Experience
+
+### Visual Identity & Source Asset
+- **Source Logo:** [`logo.jpg`](logo.jpg) (1080×1080 square) serves as the primary visual identity.
+- **Color Palette:**
+  - Dark Navy Background: `#07111F`
+  - Primary Cyan Accent: `#51D8FF`
+  - Secondary Blue: `#1677FF`
+  - Clean White Typography: `#FFFFFF`
+  - Subdued Metallic Slate: `#91A9BF` / `#243B50`
+
+### Generated Favicon & App Icon Suite
+All icons are generated via [`scripts/generate_favicons.py`](scripts/generate_favicons.py):
+- `static/favicon.ico`: Genuine multi-resolution ICO containing 16×16, 32×32, and 48×48 dimensions.
+- `static/favicon-16x16.png`: Transparent 16×16 PNG for standard browser tabs.
+- `static/favicon-32x32.png`: Transparent 32×32 PNG for high-DPI browser tabs.
+- `static/apple-touch-icon.png`: 180×180 PNG on brand dark navy `#07111F` for iOS Home Screens.
+- `static/android-chrome-192x192.png`: 192×192 PNG for Android Home Screens.
+- `static/android-chrome-512x512.png`: 512×512 PNG for high-DPI splash and PWA manifests.
+- `static/site.webmanifest`: Progressive Web App manifest defining theme colors, standalone mode, and icon paths.
+- `static/img/va-logo-sm.png`: Optimized 64×64 PNG for sidebar header navigation.
+- `static/img/va-logo-card.png`: 256×256 brand badge for loading screens and error views.
+- `static/img/va-logo.png`: High-resolution 512×512 transparent logo.
+
+To regenerate assets at any time:
+```bash
+python scripts/generate_favicons.py
+```
+
+### Initial Loading Experience
+- Pure CSS animation with zero heavy external libraries.
+- Centered VA monogram with ambient pulse glow and indeterminate cyan-to-blue gradient progress bar.
+- Small status subtitle ("Initializing atmosphere monitor…") informing users of background telemetry sync.
+- Automatically dismisses upon data arrival with a safety net fallback to prevent permanently locking the interface if the network stalls.
+- Fully respects `prefers-reduced-motion` for vestibular accessibility.
+
+### Component-Level Loading Feedback
+- **Dashboard Telemetry:** Skeleton metric placeholders while initial readings are retrieved.
+- **Charts:** Skeleton chart placeholders and inline dual-color spinners during range updates (1h, 6h, 24h, 7d). Range buttons are temporarily disabled to prevent race conditions.
+- **CSV Export:** Tactile loading state with inline spinner and screen-reader confirmation during CSV generation.
+- **Form Submissions:** Threshold setting and sampling interval forms show button spinners and lock inputs to prevent duplicate POST requests.
+- **Accessibility:** Screen-reader live region announcements (`aria-live="polite"`) for background status changes.
+
+### Custom Branded Error Pages
+- **404 Not Found (`templates/404.html`):** Custom branded error page explaining missing routes, with direct links back to Overview, Live Monitor, and Sensor Diagnostics. Explicitly clarifies that a missing hardware sensor does not trigger 404s.
+- **500 Server Error (`templates/500.html`):** Safe, professional fallback that logs server conditions without leaking internal tracebacks, paths, or environment variables.
+
+---
+
+## 9. Installation & Execution Instructions
 
 ### Local Development / Demo Mode (Laptop)
 
@@ -175,26 +224,29 @@ Access from any phone or computer on the same Wi-Fi network at `http://<RPI_IP>:
 
 ---
 
-## 9. Running Automated Tests
+## 10. Running Automated Tests
 
-Run the complete 22-test automated verification suite:
+Run the complete 30-test automated verification suite:
 
 ```bash
 pytest -v
 ```
 
-All 22 unit and integration tests verify:
+All 30 unit and integration tests verify:
 - Database schema initialization, WAL mode, queries, and today's summary stats.
 - Alert deduplication: repeated polls during elevated conditions never create duplicate alerts.
 - Alert acknowledgment and automatic hysteresis resolution when temperature normalizes.
 - REST API contracts (`/api/status`, `/api/readings`, `/api/alerts`, CSV export).
 - Page rendering: `/dashboard`, `/live`, `/history`, `/alerts`, `/system`, `/about`, `/project`.
+- Favicon suite & web manifest paths, sizes, formats, and multi-resolution ICO integrity.
+- Root branding routes (`/favicon.ico`, `/site.webmanifest`, `/apple-touch-icon.png`).
+- Branded 404 & 500 error pages and zero leakage of server secrets/tracebacks.
 - Project overview and team information rendering with measurement limitation guarantees.
 - Hardware failover: offline sensor reporting without fabricating fake data.
 
 ---
 
-## 10. Deployment Considerations
+## 11. Deployment Considerations
 
 - **Raspberry Pi systemd:** A production service file ([`virtual-atmosphere.service`](virtual-atmosphere.service)) is included for automatic daemon management and autostart on boot.
 - **Vercel Cloud Deployment:** Pre-configured with [`vercel.json`](vercel.json) and [`api/index.py`](api/index.py). When deployed to Vercel, SQLite storage automatically redirects to `/tmp/virtual_atmosphere.db` and on-demand telemetry advances simulated demo readings.

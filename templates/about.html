@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Project Overview &amp; Team - Virtual Atmosphere{% endblock %}
+{% block title %}Project &amp; Team{% endblock %}
 {% block header_title %}Project Overview &amp; Team Integration{% endblock %}
 
 {% block content %}
@@ -9,6 +9,7 @@
   <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-3">
     <div>
       <div class="d-flex align-items-center gap-2 mb-1">
+        <img src="{{ url_for('static', filename='img/va-logo-sm.png') }}" alt="VA Logo" width="32" height="32" class="rounded me-1">
         <span class="brand-wordmark fs-4"><span class="accent-va">VA</span> | Virtual Atmosphere</span>
         <span class="badge bg-primary bg-opacity-25 text-info border border-info border-opacity-25">Student IoT Science Project</span>
       </div>

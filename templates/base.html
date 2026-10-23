@@ -3,7 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}Environmental Overview{% endblock %} - {{ WORDMARK }}</title>
+  <title>{% block title %}VA Monitor{% endblock %} | {{ PRODUCT_NAME }}</title>
+  <meta name="description" content="Virtual Atmosphere (VA) - {{ TAGLINE }} Real-time environmental monitoring dashboard.">
+  <meta name="theme-color" content="#07111F">
+  <meta name="msapplication-TileColor" content="#07111F">
+
+  <!-- Favicons and Web Manifest -->
+  <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon-16x16.png') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon-32x32.png') }}">
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='site.webmanifest') }}">
   
   <!-- Inter font from system or web -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -18,6 +28,25 @@
 </head>
 <body>
 
+<!-- Branded Initial Application Loading Screen -->
+<div id="vaAppLoader" class="va-initial-loader" role="status" aria-live="polite" aria-label="Loading Virtual Atmosphere">
+  <div class="loader-content">
+    <div class="loader-logo-wrapper">
+      <img src="{{ url_for('static', filename='img/va-logo-card.png') }}" alt="Virtual Atmosphere Logo" class="loader-logo" width="92" height="92">
+      <div class="loader-glow-ring"></div>
+    </div>
+    <div class="loader-brand-title">Virtual Atmosphere</div>
+    <div class="loader-tagline">{{ TAGLINE }}</div>
+    <div class="loader-progress-track">
+      <div class="loader-progress-bar"></div>
+    </div>
+    <div class="loader-status-text" id="vaLoaderStatus">Initializing atmosphere monitor…</div>
+  </div>
+</div>
+
+<!-- Screen Reader Live Announcements -->
+<div id="vaA11yLive" class="visually-hidden" role="status" aria-live="polite"></div>
+
 <div class="app-wrapper">
   <!-- Mobile Sidebar Backdrop -->
   <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
@@ -25,13 +54,18 @@
   <!-- Sidebar Navigation -->
   <aside class="app-sidebar" id="appSidebar">
     <div class="sidebar-header">
-      <div>
-        <div class="brand-wordmark">
-          <span class="accent-va">VA</span>
-          <span>|</span>
-          <span>Virtual Atmosphere</span>
+      <div class="d-flex align-items-center gap-3">
+        <a href="{{ url_for('dashboard') }}" class="d-flex align-items-center text-decoration-none">
+          <img src="{{ url_for('static', filename='img/va-logo-sm.png') }}" alt="VA Logo" class="sidebar-logo" width="38" height="38">
+        </a>
+        <div>
+          <div class="brand-wordmark">
+            <span class="accent-va">VA</span>
+            <span class="text-secondary opacity-50">|</span>
+            <span>Virtual Atmosphere</span>
+          </div>
+          <div class="brand-tagline">{{ TAGLINE }}</div>
         </div>
-        <div class="brand-tagline">{{ TAGLINE }}</div>
       </div>
     </div>
 
