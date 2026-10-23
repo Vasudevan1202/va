@@ -146,12 +146,13 @@ def test_favicon_and_branding_in_rendered_html(test_client):
         # Title format
         assert expected_title in html, f"Page {path} title missing: {expected_title}"
 
-        # Favicons in <head>
+        # Favicons in <head> with versioning
         assert "favicon.ico" in html, f"favicon.ico link missing in {path}"
         assert "favicon-16x16.png" in html, f"favicon-16x16 link missing in {path}"
         assert "favicon-32x32.png" in html, f"favicon-32x32 link missing in {path}"
         assert "apple-touch-icon.png" in html, f"apple-touch-icon link missing in {path}"
         assert "site.webmanifest" in html, f"webmanifest link missing in {path}"
+        assert "?v=" in html, f"Cache-busting version query parameter missing in {path}"
         assert '<meta name="theme-color" content="#07111F">' in html
 
         # Initial loader

@@ -14,6 +14,7 @@ class Config:
     DASHBOARD_NAME = "VA Monitor"
     TAGLINE = "Understand Your Atmosphere."
     VERSION = "1.0.0"
+    ASSET_VERSION = os.environ.get("VA_ASSET_VERSION", "1.0.1")
 
     # Base directory reference
     BASE_DIR = BASE_DIR

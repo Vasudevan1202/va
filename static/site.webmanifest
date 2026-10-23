@@ -4,13 +4,13 @@
   "description": "Understand Your Atmosphere. Real-time environmental monitoring platform.",
   "icons": [
     {
-      "src": "/static/android-chrome-192x192.png",
+      "src": "/static/android-chrome-192x192.png?v=1.0.1",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/static/android-chrome-512x512.png",
+      "src": "/static/android-chrome-512x512.png?v=1.0.1",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"

@@ -155,6 +155,12 @@ To regenerate assets at any time:
 python scripts/generate_favicons.py
 ```
 
+### Browser Cache-Busting & Asset Versioning
+Browsers aggressively cache favicons in an internal profile database (e.g. Chrome's `Favicons` SQLite DB) that ignores standard `Ctrl+F5` page reloads. To ensure instant updates across all browsers:
+- Favicon references in `<head>` are served with an asset query parameter: `v={{ ASSET_VERSION }}` (e.g., `/static/favicon-32x32.png?v=1.0.1`).
+- Direct routes (`/favicon.ico`, `/site.webmanifest`, `/apple-touch-icon.png`) serve explicit `Cache-Control: no-cache, must-revalidate` headers.
+- The web app manifest [`static/site.webmanifest`](static/site.webmanifest) versions its embedded icon endpoints (`?v=1.0.1`).
+
 ### Initial Loading Experience
 - Pure CSS animation with zero heavy external libraries.
 - Centered VA monogram with ambient pulse glow and indeterminate cyan-to-blue gradient progress bar.

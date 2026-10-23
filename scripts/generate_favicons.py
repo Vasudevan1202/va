@@ -53,8 +53,8 @@ def generate_assets(base_dir=None):
     ch = bbox[3] - bbox[1]
     max_side = max(cw, ch)
 
-    # Square crop with balanced padding for transparent icons
-    pad = int(max_side * 0.10)
+    # Square crop with balanced padding so content fills ~88-90% of the canvas
+    pad = int(max_side * 0.06)
     crop_size = max_side + 2 * pad
     crop_box = (cx - crop_size // 2, cy - crop_size // 2, cx + crop_size // 2, cy + crop_size // 2)
     cropped_trans = im.crop(crop_box)
@@ -67,8 +67,8 @@ def generate_assets(base_dir=None):
     fav_16.save(static_dir / "favicon-16x16.png", format="PNG", optimize=True)
     fav_32.save(static_dir / "favicon-32x32.png", format="PNG", optimize=True)
 
-    # Favicon.ico with multi-resolution (16, 32, 48)
-    fav_48.save(
+    # Favicon.ico with multi-resolution directly from cropped master
+    cropped_trans.save(
         static_dir / "favicon.ico",
         format="ICO",
         sizes=[(16, 16), (32, 32), (48, 48)]
@@ -82,7 +82,7 @@ def generate_assets(base_dir=None):
     logo_64.save(img_dir / "va-logo-sm.png", format="PNG", optimize=True)
 
     # 2. Solid brand background (#07111F) for apple-touch-icon and android-chrome
-    def create_brand_icon(size, icon_ratio=0.72):
+    def create_brand_icon(size, icon_ratio=0.74):
         bg = Image.new("RGBA", (size, size), (7, 17, 31, 255))
         icon_size = int(size * icon_ratio)
         scaled_logo = cropped_trans.resize((icon_size, icon_size), Image.Resampling.LANCZOS)
@@ -90,32 +90,33 @@ def generate_assets(base_dir=None):
         bg.alpha_composite(scaled_logo, offset)
         return bg
 
-    apple_icon = create_brand_icon(180, icon_ratio=0.70)
+    apple_icon = create_brand_icon(180, icon_ratio=0.72)
     apple_icon.save(static_dir / "apple-touch-icon.png", format="PNG", optimize=True)
 
-    android_192 = create_brand_icon(192, icon_ratio=0.70)
+    android_192 = create_brand_icon(192, icon_ratio=0.72)
     android_192.save(static_dir / "android-chrome-192x192.png", format="PNG", optimize=True)
 
-    android_512 = create_brand_icon(512, icon_ratio=0.72)
+    android_512 = create_brand_icon(512, icon_ratio=0.74)
     android_512.save(static_dir / "android-chrome-512x512.png", format="PNG", optimize=True)
 
-    card_logo = create_brand_icon(256, icon_ratio=0.75)
+    card_logo = create_brand_icon(256, icon_ratio=0.76)
     card_logo.save(img_dir / "va-logo-card.png", format="PNG", optimize=True)
 
-    # 3. site.webmanifest
+    # 3. site.webmanifest with asset cache-busting query parameter
+    asset_version = os.environ.get("VA_ASSET_VERSION", "1.0.1")
     manifest_data = {
         "name": "Virtual Atmosphere",
         "short_name": "VA",
         "description": "Understand Your Atmosphere. Real-time environmental monitoring platform.",
         "icons": [
             {
-                "src": "/static/android-chrome-192x192.png",
+                "src": f"/static/android-chrome-192x192.png?v={asset_version}",
                 "sizes": "192x192",
                 "type": "image/png",
                 "purpose": "any maskable"
             },
             {
-                "src": "/static/android-chrome-512x512.png",
+                "src": f"/static/android-chrome-512x512.png?v={asset_version}",
                 "sizes": "512x512",
                 "type": "image/png",
                 "purpose": "any maskable"

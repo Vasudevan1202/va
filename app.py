@@ -71,6 +71,7 @@ def create_app(test_config=None) -> Flask:
             "DASHBOARD_NAME": Config.DASHBOARD_NAME,
             "TAGLINE": Config.TAGLINE,
             "VERSION": Config.VERSION,
+            "ASSET_VERSION": getattr(Config, "ASSET_VERSION", "1.0.1"),
             "app_mode": app.sensor_service.mode
         }
 
@@ -80,16 +81,22 @@ def create_app(test_config=None) -> Flask:
 
     @app.route("/favicon.ico")
     def favicon():
-        return send_from_directory(app.static_folder, "favicon.ico", mimetype="image/vnd.microsoft.icon")
+        res = send_from_directory(app.static_folder, "favicon.ico", mimetype="image/vnd.microsoft.icon")
+        res.headers["Cache-Control"] = "no-cache, must-revalidate"
+        return res
 
     @app.route("/site.webmanifest")
     def site_manifest():
-        return send_from_directory(app.static_folder, "site.webmanifest", mimetype="application/manifest+json")
+        res = send_from_directory(app.static_folder, "site.webmanifest", mimetype="application/manifest+json")
+        res.headers["Cache-Control"] = "no-cache, must-revalidate"
+        return res
 
     @app.route("/apple-touch-icon.png")
     @app.route("/apple-touch-icon-precomposed.png")
     def apple_touch_icon():
-        return send_from_directory(app.static_folder, "apple-touch-icon.png", mimetype="image/png")
+        res = send_from_directory(app.static_folder, "apple-touch-icon.png", mimetype="image/png")
+        res.headers["Cache-Control"] = "no-cache, must-revalidate"
+        return res
 
     # ==========================================
     # HTML Page Routes
