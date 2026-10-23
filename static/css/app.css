@@ -687,3 +687,259 @@ a:hover {
 .sidebar-backdrop.show {
   display: block;
 }
+
+
+/* ===================================================
+   Team, Project Overview, Workflow & Architecture Styles
+   =================================================== */
+
+/* Team Member Cards */
+.team-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 24px 20px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.team-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--primary-cyan), var(--secondary-blue));
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.team-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(81, 216, 255, 0.4);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45), 0 0 16px rgba(81, 216, 255, 0.15);
+}
+
+.team-card:hover::before {
+  opacity: 1;
+}
+
+.team-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(81, 216, 255, 0.2), rgba(22, 119, 255, 0.25));
+  border: 2px solid var(--primary-cyan);
+  color: var(--primary-cyan);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  margin-bottom: 16px;
+  box-shadow: 0 0 12px rgba(81, 216, 255, 0.2);
+}
+
+.team-name {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-white);
+  margin-bottom: 4px;
+}
+
+.team-role {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  background-color: rgba(81, 216, 255, 0.12);
+  color: var(--primary-cyan);
+  border: 1px solid rgba(81, 216, 255, 0.25);
+  margin-bottom: 14px;
+}
+
+.team-role.lead {
+  background-color: rgba(255, 181, 71, 0.15);
+  color: var(--warning);
+  border-color: rgba(255, 181, 71, 0.35);
+}
+
+.team-resp-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  color: var(--text-muted);
+  font-weight: 700;
+  margin-bottom: 6px;
+  align-self: flex-start;
+  text-align: left;
+}
+
+.team-resp {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  text-align: left;
+  flex-grow: 1;
+  width: 100%;
+}
+
+/* Workflow Step Cards */
+.workflow-step-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 20px 16px;
+  height: 100%;
+  position: relative;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.workflow-step-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(81, 216, 255, 0.3);
+}
+
+.workflow-step-badge {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary-cyan), var(--secondary-blue));
+  color: #07111F;
+  font-size: 14px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+  flex-shrink: 0;
+  box-shadow: 0 0 10px rgba(81, 216, 255, 0.3);
+}
+
+.workflow-step-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-white);
+  margin-bottom: 8px;
+}
+
+.workflow-step-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0;
+  flex-grow: 1;
+}
+
+/* Architecture Pipeline Flow */
+.architecture-flow {
+  display: flex;
+  align-items: stretch;
+  flex-wrap: wrap;
+  gap: 12px;
+  position: relative;
+}
+
+.arch-node {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  flex: 1 1 180px;
+  min-width: 170px;
+  display: flex;
+  flex-direction: column;
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.arch-node:hover {
+  border-color: var(--primary-cyan);
+  transform: translateY(-2px);
+}
+
+.arch-node-tag {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 4px;
+}
+
+.arch-node-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-white);
+  margin-bottom: 6px;
+}
+
+.arch-node-desc {
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  margin: 0;
+}
+
+.arch-connector {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary-cyan);
+  font-size: 18px;
+  font-weight: bold;
+  padding: 0 4px;
+}
+
+@media (max-width: 767.98px) {
+  .arch-connector {
+    width: 100%;
+    transform: rotate(90deg);
+    padding: 4px 0;
+  }
+}
+
+/* Overview Section Headings & Highlights */
+.section-lead-box {
+  background: linear-gradient(135deg, rgba(16, 38, 58, 0.8), rgba(13, 27, 42, 0.9));
+  border: 1px solid var(--border-color);
+  border-left: 4px solid var(--primary-cyan);
+  border-radius: var(--radius-md);
+  padding: 20px 24px;
+  margin-bottom: 24px;
+}
+
+.live-link-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background-color: rgba(81, 216, 255, 0.12);
+  color: var(--primary-cyan);
+  border: 1px solid rgba(81, 216, 255, 0.35);
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.live-link-pill:hover {
+  background-color: rgba(81, 216, 255, 0.22);
+  color: #FFFFFF;
+  border-color: var(--primary-cyan);
+  box-shadow: 0 0 12px rgba(81, 216, 255, 0.3);
+}
+
+.live-link-pill svg {
+  width: 14px;
+  height: 14px;
+}

@@ -22,10 +22,38 @@ def app_client(tmp_path):
 
 def test_pages_render(app_client):
     client, _ = app_client
-    pages = ["/", "/dashboard", "/live", "/history", "/alerts", "/system", "/about"]
+    pages = ["/", "/dashboard", "/live", "/history", "/alerts", "/system", "/about", "/project", "/project-overview"]
     for p in pages:
         res = client.get(p)
         assert res.status_code in [200, 302], f"Failed on page: {p}"
+
+def test_project_overview_and_team_content(app_client):
+    client, _ = app_client
+    res = client.get("/about")
+    assert res.status_code == 200
+    html = res.get_data(as_text=True)
+
+    # Verify team members
+    assert "Vasu" in html
+    assert "Thakshanamoorthi S" in html
+    assert "Nithilan" in html
+
+    # Verify live production dashboard URL
+    assert "va.developerhut.in" in html
+
+    # Verify 7 workflow steps
+    assert "Sensor Setup" in html
+    assert "Data Collection" in html
+    assert "Data Processing" in html
+    assert "Data Storage" in html
+    assert "Backend Processing" in html
+    assert "Dashboard View" in html
+    assert "Testing &amp; Deploy" in html
+
+    # Verify transparency on measurement limitations (no fake humidity)
+    assert "does not contain a relative humidity sensor" in html
+    assert "No Fabricated Humidity" in html
+    assert "WBGT" in html
 
 def test_api_status(app_client):
     client, _ = app_client

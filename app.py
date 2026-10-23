@@ -103,8 +103,13 @@ def create_app(test_config=None) -> Flask:
         return render_template("system.html", active_page="system")
 
     @app.route("/about")
+    @app.route("/project")
     def about():
         return render_template("about.html", active_page="about")
+
+    @app.route("/project-overview")
+    def project_overview():
+        return redirect(url_for("about"))
 
     # ==========================================
     # REST API Endpoints

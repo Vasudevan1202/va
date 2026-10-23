@@ -1,142 +1,434 @@
 {% extends "base.html" %}
 
-{% block title %}About Project - Virtual Atmosphere{% endblock %}
-{% block header_title %}About Virtual Atmosphere (VA){% endblock %}
+{% block title %}Project Overview &amp; Team - Virtual Atmosphere{% endblock %}
+{% block header_title %}Project Overview &amp; Team Integration{% endblock %}
 
 {% block content %}
+<!-- Section 1: Project Overview & Mission Hero -->
+<div class="section-lead-box">
+  <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-3">
+    <div>
+      <div class="d-flex align-items-center gap-2 mb-1">
+        <span class="brand-wordmark fs-4"><span class="accent-va">VA</span> | Virtual Atmosphere</span>
+        <span class="badge bg-primary bg-opacity-25 text-info border border-info border-opacity-25">Student IoT Science Project</span>
+      </div>
+      <div class="text-cyan fw-semibold fs-5">{{ TAGLINE }}</div>
+    </div>
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+      <a href="https://va.developerhut.in/dashboard" target="_blank" rel="noopener noreferrer" class="live-link-pill" title="Open live production dashboard">
+        <span class="status-dot bg-success"></span>
+        <span>Live Dashboard: va.developerhut.in</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+          <polyline points="15 3 21 3 21 9"></polyline>
+          <line x1="10" y1="14" x2="21" y2="3"></line>
+        </svg>
+      </a>
+      <span class="badge bg-secondary text-white py-2 px-3">Status: Operational Prototype</span>
+    </div>
+  </div>
+
+  <p class="text-white lead fs-6 mb-3">
+    <strong>Virtual Atmosphere (VA)</strong> is a student-built environmental monitoring and atmospheric intelligence platform engineered using a Raspberry Pi 3 Model B+ and a precision GY-BMP280 atmospheric sensor. The project bridges physical environmental observation with modern full-stack web telemetry to monitor local microclimates, log persistent records, visualize thermodynamic trends, and detect critical thermal variations.
+  </p>
+
+  <div class="row g-3 text-secondary small">
+    <div class="col-12 col-md-6 col-lg-3">
+      <div class="p-3 rounded bg-secondary bg-opacity-40 border border-secondary border-opacity-50 h-100">
+        <div class="text-cyan fw-bold mb-1">Direct I²C Interface</div>
+        <div>Sensor connects directly to Raspberry Pi GPIO. Zero intermediate microcontrollers (no ESP32 required).</div>
+      </div>
+    </div>
+    <div class="col-12 col-md-6 col-lg-3">
+      <div class="p-3 rounded bg-secondary bg-opacity-40 border border-secondary border-opacity-50 h-100">
+        <div class="text-cyan fw-bold mb-1">Edge SQLite Storage</div>
+        <div>Runs completely locally with SQLite in Write-Ahead Logging (WAL) mode. Zero cloud dependency.</div>
+      </div>
+    </div>
+    <div class="col-12 col-md-6 col-lg-3">
+      <div class="p-3 rounded bg-secondary bg-opacity-40 border border-secondary border-opacity-50 h-100">
+        <div class="text-cyan fw-bold mb-1">Active Warning System</div>
+        <div>Configurable high-temperature threshold detection with persistent logging and deduplication.</div>
+      </div>
+    </div>
+    <div class="col-12 col-md-6 col-lg-3">
+      <div class="p-3 rounded bg-secondary bg-opacity-40 border border-secondary border-opacity-50 h-100">
+        <div class="text-cyan fw-bold mb-1">Scientific Integrity</div>
+        <div>Accurate reporting of valid BMP280 metrics (temperature and barometric pressure). No fabricated data.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Problem Statement, Objectives & Outcomes -->
 <div class="row g-4 mb-4">
-  <!-- Mission & Overview -->
-  <div class="col-12 col-lg-8">
+  <div class="col-12 col-lg-6">
     <div class="va-card h-100">
       <div class="va-card-header">
-        <h2 class="va-card-title m-0">Project Overview &amp; Educational Purpose</h2>
-        <span class="badge bg-primary bg-opacity-25 text-info">STEM &bull; IoT Science</span>
+        <h2 class="va-card-title m-0">Problem Statement &amp; Purpose</h2>
+        <span class="badge bg-secondary text-white">Context</span>
       </div>
-      <p class="text-white lead fs-6">
-        <strong>Virtual Atmosphere (VA)</strong> is a school environmental monitoring and Internet-of-Things (IoT) science platform designed to cultivate hands-on understanding of physical atmospheric phenomena, embedded Linux systems, and real-time telemetry.
+      <p class="text-secondary small mb-3">
+        Commercial weather applications rely on macro-scale radar stations situated at distant airports, often kilometers away. These broad forecasts fail to capture localized indoor microclimates, classroom heat accumulation, computer lab thermal spikes, or rapid barometric fluctuations within a school building.
       </p>
-      <p class="text-secondary">
-        By connecting a precision Bosch BMP280 environmental sensor directly to a Raspberry Pi 3 Model B+ via the hardware Inter-Integrated Circuit (I²C) bus, the platform continuously measures, validates, logs, and visualizes local ambient temperature and barometric pressure.
-      </p>
-
-      <div class="row g-3 my-2">
-        <div class="col-sm-4">
-          <div class="p-3 rounded bg-secondary bg-opacity-40 border border-secondary border-opacity-40 text-center">
-            <div class="text-cyan fw-bold fs-5">Direct I²C</div>
-            <div class="small text-secondary mt-1">Direct hardware connection, zero intermediate microcontrollers (No ESP32)</div>
-          </div>
-        </div>
-        <div class="col-sm-4">
-          <div class="p-3 rounded bg-secondary bg-opacity-40 border border-secondary border-opacity-40 text-center">
-            <div class="text-cyan fw-bold fs-5">Local SQLite</div>
-            <div class="small text-secondary mt-1">Zero cloud dependencies; fully offline school intranet deployable</div>
-          </div>
-        </div>
-        <div class="col-sm-4">
-          <div class="p-3 rounded bg-secondary bg-opacity-40 border border-secondary border-opacity-40 text-center">
-            <div class="text-cyan fw-bold fs-5">Active Warnings</div>
-            <div class="small text-secondary mt-1">Configurable threshold detection with persistent audit logging</div>
-          </div>
-        </div>
-      </div>
-
-      <h3 class="va-card-title mt-4 mb-2">Scientific Atmospheric Principles</h3>
-      <p class="text-secondary small">
-        Atmospheric pressure reflects the weight of the air column pressing down on the Earth's surface. At sea level, standard atmospheric pressure is <strong>1013.25 hPa</strong> (hectopascals). Weather systems induce barometric fluctuations: rising pressure typically correlates with denser, cooler, or clearing air, whereas falling barometric trends often indicate advancing storm fronts or low-pressure troughs.
-      </p>
-      <p class="text-secondary small">
-        The BMP280 sensor also records subtle <em>semi-diurnal atmospheric tides</em>—a worldwide cyclic pressure wave with peaks around 10:00 and 22:00 local solar time, caused by solar heating and absorption in the upper atmosphere.
+      <p class="text-secondary small mb-0">
+        Furthermore, many educational IoT setups depend on proprietary third-party cloud brokers or fragile intermediate microcontrollers that introduce unnecessary latency, subscription fees, and internet vulnerability. <strong>Virtual Atmosphere solves this by providing a self-hosted, offline-capable monitoring station</strong> that runs entirely on local school network infrastructure.
       </p>
     </div>
   </div>
 
-  <!-- Hardware Specifications & Sensor Constraints -->
-  <div class="col-12 col-lg-4">
+  <div class="col-12 col-lg-6">
     <div class="va-card h-100">
       <div class="va-card-header">
-        <h2 class="va-card-title m-0">Hardware Specifications</h2>
-        <span class="badge bg-secondary text-white">Verified Setup</span>
+        <h2 class="va-card-title m-0">Project Objectives &amp; Expected Outcomes</h2>
+        <span class="badge bg-primary bg-opacity-25 text-info">Goals</span>
       </div>
-
-      <ul class="list-group list-group-flush bg-transparent text-secondary small">
-        <li class="list-group-item bg-transparent text-secondary px-0">
-          <strong class="text-white">Host Computer:</strong><br>
-          Raspberry Pi 3 Model B+ (Quad Core 1.4GHz, 1GB RAM)
-        </li>
-        <li class="list-group-item bg-transparent text-secondary px-0">
-          <strong class="text-white">Sensor Module:</strong><br>
-          GY-BMP280 Barometric Pressure &amp; Temperature Breakout
-        </li>
-        <li class="list-group-item bg-transparent text-secondary px-0">
-          <strong class="text-white">Hardware Interface:</strong><br>
-          I²C Bus 1 (<code class="text-cyan">/dev/i2c-1</code>), 3.3V Logic Level
-        </li>
-        <li class="list-group-item bg-transparent text-secondary px-0">
-          <strong class="text-white">Operating System:</strong><br>
-          Raspberry Pi OS (Debian Bookworm / Bullseye 32 or 64-bit)
-        </li>
-        <li class="list-group-item bg-transparent text-secondary px-0">
-          <strong class="text-white">Operating Voltage:</strong><br>
-          3.3V DC (Physical Pin 1)
-        </li>
+      <ul class="text-secondary small ps-3 mb-3">
+        <li class="mb-1"><strong>Real-Time Physical Telemetry:</strong> Sample ambient temperature and atmospheric pressure at configurable sampling intervals (default 10s).</li>
+        <li class="mb-1"><strong>Local Historical Retention:</strong> Index historical measurements in SQLite for analytical querying across 1h, 6h, 24h, and 7d horizons.</li>
+        <li class="mb-1"><strong>Responsive Visualization:</strong> Render interactive Chart.js graphs and live gauges accessible via mobile, tablet, and desktop browsers.</li>
+        <li class="mb-1"><strong>Configurable Safety Alerts:</strong> Detect thermal threshold violations with deduplicated alert tracking and hysteresis resolution.</li>
+        <li class="mb-1"><strong>Scientific Data Export:</strong> Provide one-click CSV data export for scientific graphing, spreadsheet modeling, and STEM coursework.</li>
       </ul>
+      <div class="p-2 rounded bg-secondary bg-opacity-30 border border-secondary border-opacity-40 text-muted small">
+        <strong>Current Development Status:</strong> Fully functional prototype deployed at <code class="text-cyan">https://va.developerhut.in/dashboard</code>, supporting both Raspberry Pi live I²C hardware and laptop demo mode.
+      </div>
+    </div>
+  </div>
+</div>
 
-      <div class="p-3 rounded bg-secondary bg-opacity-30 border border-secondary border-opacity-50 mt-3">
-        <h6 class="text-warning fs-6 mb-1">Humidity Transparency Notice</h6>
-        <p class="small text-secondary mb-0">
-          The BMP280 silicon chip contains piezoresistive pressure and temperature cells. It <strong>does not contain a relative humidity sensor</strong> (unlike the BME280). Virtual Atmosphere adheres to honest scientific reporting and never synthesizes or displays fake humidity data.
+<!-- Section 2: Brief Project Workflow (7 Steps) -->
+<div class="va-card mb-4">
+  <div class="va-card-header">
+    <div>
+      <h2 class="va-card-title m-0">Project Workflow</h2>
+      <small class="text-secondary">Step-by-step end-to-end data acquisition, validation, storage, and presentation pipeline</small>
+    </div>
+    <span class="badge bg-secondary text-white">7-Stage Pipeline</span>
+  </div>
+
+  <div class="row g-3">
+    <!-- Step 1 -->
+    <div class="col-12 col-sm-6 col-lg-4 col-xl">
+      <div class="workflow-step-card">
+        <div class="workflow-step-badge">1</div>
+        <div class="workflow-step-title">Sensor Setup</div>
+        <p class="workflow-step-desc">
+          Connect the GY-BMP280 sensor to the Raspberry Pi 3 Model B+ 40-pin GPIO header using the hardware I²C interface (3.3V, GND, SDA on GPIO2, SCL on GPIO3).
+        </p>
+      </div>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="col-12 col-sm-6 col-lg-4 col-xl">
+      <div class="workflow-step-card">
+        <div class="workflow-step-badge">2</div>
+        <div class="workflow-step-title">Data Collection</div>
+        <p class="workflow-step-desc">
+          Use Python and <code class="text-cyan">smbus2</code> to query I²C bus 1, read raw calibration registers, and poll temperature and atmospheric pressure registers.
+        </p>
+      </div>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="col-12 col-sm-6 col-lg-4 col-xl">
+      <div class="workflow-step-card">
+        <div class="workflow-step-badge">3</div>
+        <div class="workflow-step-title">Data Processing</div>
+        <p class="workflow-step-desc">
+          Apply Bosch compensation polynomial formulas, validate readings within physical bounds (-40 to 85°C, 300 to 1100 hPa), and attach UTC timestamps.
+        </p>
+      </div>
+    </div>
+
+    <!-- Step 4 -->
+    <div class="col-12 col-sm-6 col-lg-4 col-xl">
+      <div class="workflow-step-card">
+        <div class="workflow-step-badge">4</div>
+        <div class="workflow-step-title">Data Storage</div>
+        <p class="workflow-step-desc">
+          Commit validated measurements to the local SQLite database using Write-Ahead Logging (WAL) and parameterized queries to preserve historical continuity.
+        </p>
+      </div>
+    </div>
+
+    <!-- Step 5 -->
+    <div class="col-12 col-sm-6 col-lg-4 col-xl">
+      <div class="workflow-step-card">
+        <div class="workflow-step-badge">5</div>
+        <div class="workflow-step-title">Backend Processing</div>
+        <p class="workflow-step-desc">
+          Flask REST APIs serve telemetry, compute min/max/average stats, and evaluate threshold alerts with deduplication and hysteresis recovery.
+        </p>
+      </div>
+    </div>
+
+    <!-- Step 6 -->
+    <div class="col-12 col-sm-6 col-lg-4 col-xl">
+      <div class="workflow-step-card">
+        <div class="workflow-step-badge">6</div>
+        <div class="workflow-step-title">Dashboard View</div>
+        <p class="workflow-step-desc">
+          Render dynamic Chart.js time-series charts, live telemetry cards, delta tendencies, and historical logs on a responsive scientific dark UI.
+        </p>
+      </div>
+    </div>
+
+    <!-- Step 7 -->
+    <div class="col-12 col-sm-6 col-lg-4 col-xl">
+      <div class="workflow-step-card">
+        <div class="workflow-step-badge">7</div>
+        <div class="workflow-step-title">Testing &amp; Deploy</div>
+        <p class="workflow-step-desc">
+          Execute automated unit tests, verify failover without hardware, configure systemd startup services, and deploy for local LAN and web access.
         </p>
       </div>
     </div>
   </div>
 </div>
 
-<!-- Architecture Pipeline -->
+<!-- Section 3: Meet the Team -->
 <div class="va-card mb-4">
-  <h3 class="va-card-title mb-3">System Architecture &amp; Data Pipeline</h3>
-  <div class="row g-3 text-center">
-    <div class="col-12 col-md-3">
-      <div class="p-3 rounded bg-secondary bg-opacity-30 border border-secondary border-opacity-40 h-100">
-        <div class="badge bg-info bg-opacity-25 text-info mb-2">Layer 1: Sensor</div>
-        <div class="fw-bold text-white">Bosch BMP280</div>
-        <div class="small text-secondary mt-1">Direct I²C bus polling, hardware registers, calibration polynomial</div>
+  <div class="va-card-header">
+    <div>
+      <h2 class="va-card-title m-0">Meet the Team</h2>
+      <small class="text-secondary">Student engineering and research team driving the Virtual Atmosphere project</small>
+    </div>
+    <span class="badge bg-primary bg-opacity-25 text-info">Project Team</span>
+  </div>
+
+  <div class="row g-4">
+    <!-- Member 1: Vasu -->
+    <div class="col-12 col-md-4">
+      <div class="team-card">
+        <div class="team-avatar" style="border-color: var(--warning); color: var(--warning);">
+          V
+        </div>
+        <div class="team-name">Vasu</div>
+        <div class="team-role lead">Team Lead</div>
+        <div class="team-resp-title">Core Responsibilities</div>
+        <div class="team-resp">
+          Project coordination, system architecture, software development, full-stack integration, database schema design, and system testing.
+        </div>
       </div>
     </div>
-    <div class="col-12 col-md-3">
-      <div class="p-3 rounded bg-secondary bg-opacity-30 border border-secondary border-opacity-40 h-100">
-        <div class="badge bg-primary bg-opacity-25 text-primary mb-2">Layer 2: Engine</div>
-        <div class="fw-bold text-white">SensorService</div>
-        <div class="small text-secondary mt-1">Python daemon thread, range validation (-40 to 85°C), alert triggers</div>
+
+    <!-- Member 2: Thakshanamoorthi S -->
+    <div class="col-12 col-md-4">
+      <div class="team-card">
+        <div class="team-avatar">
+          TS
+        </div>
+        <div class="team-name">Thakshanamoorthi S</div>
+        <div class="team-role">Project Team Member</div>
+        <div class="team-resp-title">Core Responsibilities</div>
+        <div class="team-resp">
+          Assist with project development, hardware setup, I²C sensor wiring, reliability testing, and project documentation.
+        </div>
       </div>
     </div>
-    <div class="col-12 col-md-3">
-      <div class="p-3 rounded bg-secondary bg-opacity-30 border border-secondary border-opacity-40 h-100">
-        <div class="badge bg-success bg-opacity-25 text-success mb-2">Layer 3: Storage</div>
-        <div class="fw-bold text-white">SQLite (WAL Mode)</div>
-        <div class="small text-secondary mt-1">Zero-overhead, persistent ACID storage, parameterized indexing</div>
+
+    <!-- Member 3: Nithilan -->
+    <div class="col-12 col-md-4">
+      <div class="team-card">
+        <div class="team-avatar">
+          N
+        </div>
+        <div class="team-name">Nithilan</div>
+        <div class="team-role">Project Team Member</div>
+        <div class="team-resp-title">Core Responsibilities</div>
+        <div class="team-resp">
+          Assist with sensor calibration experiments, atmospheric data validation, threshold verification testing, and project presentation.
+        </div>
       </div>
     </div>
-    <div class="col-12 col-md-3">
-      <div class="p-3 rounded bg-secondary bg-opacity-30 border border-secondary border-opacity-40 h-100">
-        <div class="badge bg-warning bg-opacity-25 text-warning mb-2">Layer 4: Interface</div>
-        <div class="fw-bold text-white">Flask &amp; Chart.js</div>
-        <div class="small text-secondary mt-1">REST API + Dark Theme responsive telemetry interface</div>
-      </div>
+  </div>
+
+  <div class="mt-3 pt-3 border-top border-secondary border-opacity-25 text-secondary small text-center">
+    <em>Note: Member responsibilities represent primary focus areas and can be adapted as project tasks evolve.</em>
+  </div>
+</div>
+
+<!-- Section 4: System Architecture & Data Flow -->
+<div class="va-card mb-4">
+  <div class="va-card-header">
+    <div>
+      <h2 class="va-card-title m-0">System Architecture &amp; Data Flow</h2>
+      <small class="text-secondary">Component-level data progression from physical transducer to client interface</small>
+    </div>
+    <span class="badge bg-secondary text-white">Data Flow</span>
+  </div>
+
+  <div class="architecture-flow my-2">
+    <!-- Node 1 -->
+    <div class="arch-node">
+      <div class="arch-node-tag text-cyan">1. Physical Sensor</div>
+      <div class="arch-node-name">GY-BMP280 Sensor</div>
+      <p class="arch-node-desc">Piezoresistive transducer reading ambient temperature and barometric pressure.</p>
+    </div>
+
+    <div class="arch-connector">&rarr;</div>
+
+    <!-- Node 2 -->
+    <div class="arch-node">
+      <div class="arch-node-tag text-cyan">2. Bus Interface</div>
+      <div class="arch-node-name">I²C Interface</div>
+      <p class="arch-node-desc">Two-wire synchronous serial communication bus (SDA/SCL) running at 3.3V logic.</p>
+    </div>
+
+    <div class="arch-connector">&rarr;</div>
+
+    <!-- Node 3 -->
+    <div class="arch-node">
+      <div class="arch-node-tag text-cyan">3. Single-Board Host</div>
+      <div class="arch-node-name">Raspberry Pi 3B+</div>
+      <p class="arch-node-desc">Embedded Linux host executing services, managing I²C bus, and local network serving.</p>
+    </div>
+
+    <div class="arch-connector">&rarr;</div>
+
+    <!-- Node 4 -->
+    <div class="arch-node">
+      <div class="arch-node-tag text-cyan">4. Service Layer</div>
+      <div class="arch-node-name">Python Sensor Service</div>
+      <p class="arch-node-desc">Daemon worker polling registers, computing polynomial compensation, and validating bounds.</p>
+    </div>
+
+    <div class="arch-connector">&rarr;</div>
+
+    <!-- Node 5 -->
+    <div class="arch-node">
+      <div class="arch-node-tag text-cyan">5. Web Engine</div>
+      <div class="arch-node-name">Flask Backend</div>
+      <p class="arch-node-desc">Lightweight web application serving REST endpoints and managing threshold alert logic.</p>
+    </div>
+
+    <div class="arch-connector">&rarr;</div>
+
+    <!-- Node 6 -->
+    <div class="arch-node">
+      <div class="arch-node-tag text-cyan">6. Persistent Storage</div>
+      <div class="arch-node-name">SQLite Database</div>
+      <p class="arch-node-desc">Thread-safe local database storing indexed time-series readings and alert event logs.</p>
+    </div>
+
+    <div class="arch-connector">&rarr;</div>
+
+    <!-- Node 7 -->
+    <div class="arch-node">
+      <div class="arch-node-tag text-cyan">7. User Interface</div>
+      <div class="arch-node-name">VA Dashboard</div>
+      <p class="arch-node-desc">Client interface rendering live gauges, Chart.js trends, and historical query tables.</p>
     </div>
   </div>
 </div>
 
-<!-- Safety & Disclaimers -->
+<!-- Section 5: Hardware and Software Details -->
+<div class="row g-4 mb-4">
+  <div class="col-12 col-lg-6">
+    <div class="va-card h-100">
+      <div class="va-card-header">
+        <h2 class="va-card-title m-0">Hardware Specifications</h2>
+        <span class="badge bg-secondary text-white">Bill of Materials</span>
+      </div>
+
+      <table class="table table-dark table-borderless text-secondary small align-middle mb-0">
+        <tbody>
+          <tr>
+            <td class="text-secondary fw-semibold">Host Computer:</td>
+            <td class="text-white">Raspberry Pi 3 Model B+ (Broadcom BCM2837B0, quad-core Cortex-A53 @ 1.4GHz, 1GB LPDDR2 RAM)</td>
+          </tr>
+          <tr>
+            <td class="text-secondary fw-semibold">Sensor Module:</td>
+            <td class="text-white">GY-BMP280 Barometric Pressure &amp; Temperature Breakout (Bosch Sensortec)</td>
+          </tr>
+          <tr>
+            <td class="text-secondary fw-semibold">Power Supply:</td>
+            <td class="text-white">5.0V / 2.5A micro-USB power adapter with stable voltage regulation</td>
+          </tr>
+          <tr>
+            <td class="text-secondary fw-semibold">I²C Connections:</td>
+            <td class="text-white">Direct female-to-female Dupont jumper wires (VCC to Pin 1 [3.3V], GND to Pin 6, SDA to Pin 3, SCL to Pin 5)</td>
+          </tr>
+          <tr>
+            <td class="text-secondary fw-semibold">Physical Logic Level:</td>
+            <td class="text-white">3.3V DC logic (strictly never connected to 5.0V pins to prevent sensor damage)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="col-12 col-lg-6">
+    <div class="va-card h-100">
+      <div class="va-card-header">
+        <h2 class="va-card-title m-0">Software Stack</h2>
+        <span class="badge bg-primary bg-opacity-25 text-info">Application Architecture</span>
+      </div>
+
+      <table class="table table-dark table-borderless text-secondary small align-middle mb-0">
+        <tbody>
+          <tr>
+            <td class="text-secondary fw-semibold">Language Runtime:</td>
+            <td class="text-white">Python 3.9+ with virtual environment isolation (<code class="text-cyan">.venv</code>)</td>
+          </tr>
+          <tr>
+            <td class="text-secondary fw-semibold">Backend Framework:</td>
+            <td class="text-white">Flask 3.x WSGI framework with factory pattern and canonical REST endpoints</td>
+          </tr>
+          <tr>
+            <td class="text-secondary fw-semibold">Database Engine:</td>
+            <td class="text-white">SQLite 3 with Write-Ahead Logging (WAL) and parameterized indexed queries</td>
+          </tr>
+          <tr>
+            <td class="text-secondary fw-semibold">Hardware Driver:</td>
+            <td class="text-white">Python <code class="text-cyan">smbus2</code> direct I²C register driver with fallback simulation engine</td>
+          </tr>
+          <tr>
+            <td class="text-secondary fw-semibold">Frontend Interface:</td>
+            <td class="text-white">HTML5, custom responsive CSS3 design system, Bootstrap 5 grid, Chart.js v4.4</td>
+          </tr>
+          <tr>
+            <td class="text-secondary fw-semibold">Service Management:</td>
+            <td class="text-white">Linux <code class="text-cyan">systemd</code> background service for autostart on Raspberry Pi boot</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Section 6: Measurement Limitations, Scientific Accuracy & Safety Disclaimers -->
 <div class="va-card">
   <div class="va-card-header">
-    <h3 class="va-card-title m-0">Student Safety &amp; Educational Disclaimers</h3>
-    <span class="badge bg-warning bg-opacity-20 text-warning">Notice</span>
+    <h2 class="va-card-title m-0">Measurement Limitations &amp; Scientific Accuracy</h2>
+    <span class="badge bg-warning bg-opacity-20 text-warning">Scientific Standards</span>
   </div>
-  <p class="text-secondary small">
-    <strong>Prototype Status:</strong> Virtual Atmosphere is designed as an educational school IoT demonstration platform. The temperature alert system is a software-configurable event detector designed to illustrate automation, threshold triggers, and environmental observation.
-  </p>
-  <p class="text-secondary small m-0">
-    <strong>Health &amp; Life-Safety Disclaimer:</strong> The threshold alerts provided by this software are <em>not</em> certified for clinical medical diagnostics, official thermal comfort index certifications (such as WBGT or OSHA heat stress assessments), or industrial safety shutoffs.
-  </p>
+
+  <div class="row g-4">
+    <div class="col-12 col-md-6">
+      <h3 class="text-white fs-6 mb-2">Humidity &amp; Heat Index Transparency</h3>
+      <p class="text-secondary small">
+        The onboard GY-BMP280 sensor breakout houses a piezoresistive barometric pressure element and an integrated temperature sensor. <strong>It does not contain a relative humidity sensor</strong> (unlike the BME280).
+      </p>
+      <ul class="text-secondary small ps-3 mb-0">
+        <li class="mb-1"><strong>No Fabricated Humidity:</strong> Virtual Atmosphere strictly adheres to scientific honesty and does not generate or display synthetic humidity data as real readings.</li>
+        <li class="mb-1"><strong>Heat Index &amp; WBGT Boundaries:</strong> Calculating a validated Heat Index or Wet Bulb Globe Temperature (WBGT) requires simultaneous relative humidity and wet-bulb thermodynamic measurements. These calculations cannot be reliably performed using a BMP280 sensor alone.</li>
+        <li class="mb-1"><strong>Future Expansion:</strong> Supporting WBGT or Heat Index would require adding a dedicated humidity sensor (e.g., DHT22/SHT31) or natural wet-bulb temperature apparatus.</li>
+      </ul>
+    </div>
+
+    <div class="col-12 col-md-6">
+      <h3 class="text-white fs-6 mb-2">Hardware vs. Demo Mode Separation</h3>
+      <p class="text-secondary small">
+        The application strictly segregates live hardware measurements from development simulation:
+      </p>
+      <ul class="text-secondary small ps-3 mb-0">
+        <li class="mb-1"><strong>Live Hardware Mode:</strong> If the physical sensor is disconnected, the system unambiguously reports <strong>Sensor Offline</strong> and records zero fake measurements into the database.</li>
+        <li class="mb-1"><strong>Demo Mode:</strong> All simulated records are explicitly labeled with <code class="text-warning">source="demo"</code> and accompanied by a visible notification banner.</li>
+        <li class="mb-1"><strong>Educational Disclaimer:</strong> This system is developed for school IoT science projects and environmental study. Temperature threshold alerts are educational notifications, not medical diagnoses or OSHA industrial safety ratings.</li>
+      </ul>
+    </div>
+  </div>
 </div>
 {% endblock %}
