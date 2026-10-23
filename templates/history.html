@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block title %}Historical Data - Virtual Atmosphere{% endblock %}
+{% block header_title %}Historical Environmental Data{% endblock %}
+
+{% block content %}
+<!-- Filters Bar Card -->
+<div class="va-card mb-4">
+  <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+    <div>
+      <h2 class="va-card-title m-0">Query Filters &amp; Range</h2>
+      <small class="text-secondary">Explore environmental records across custom dates or preset intervals</small>
+    </div>
+    <div class="d-flex gap-2">
+      <a id="btnHistoryExportCSV" href="{{ url_for('api_readings_export_csv', range='24h') }}" class="va-btn va-btn-primary va-btn-sm">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="7 10 12 15 17 10"></polyline>
+          <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+        Download CSV Export
+      </a>
+    </div>
+  </div>
+
+  <form id="historyFilterForm" class="row g-3 align-items-end">
+    <!-- Range Presets -->
+    <div class="col-12 col-md-4">
+      <label class="form-label text-secondary small">Range Preset</label>
+      <div class="btn-group-pill w-100 d-flex" id="historyPresetGroup">
+        <button type="button" class="flex-fill" data-range="1h">1h</button>
+        <button type="button" class="flex-fill" data-range="6h">6h</button>
+        <button type="button" class="flex-fill active" data-range="24h">24h</button>
+        <button type="button" class="flex-fill" data-range="7d">7d</button>
+        <button type="button" class="flex-fill" data-range="30d">30d</button>
+      </div>
+    </div>
+
+    <!-- Start Date -->
+    <div class="col-12 col-sm-6 col-md-3">
+      <label for="filterStartDate" class="form-label text-secondary small">Custom Start (UTC / ISO)</label>
+      <input type="datetime-local" class="va-input w-100" id="filterStartDate">
+    </div>
+
+    <!-- End Date -->
+    <div class="col-12 col-sm-6 col-md-3">
+      <label for="filterEndDate" class="form-label text-secondary small">Custom End (UTC / ISO)</label>
+      <input type="datetime-local" class="va-input w-100" id="filterEndDate">
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="col-12 col-md-2 d-flex gap-2">
+      <button type="submit" class="va-btn va-btn-secondary flex-fill" id="btnApplyFilter">Filter</button>
+      <button type="button" class="va-btn va-btn-secondary" id="btnResetFilter" title="Reset filter">Reset</button>
+    </div>
+  </form>
+</div>
+
+<!-- Aggregated Statistics Row -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-lg-3">
+    <div class="va-card text-center py-3">
+      <div class="text-secondary small text-uppercase">Sample Count</div>
+      <div class="fs-3 fw-bold text-white mt-1" id="statSampleCount">--</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="va-card text-center py-3">
+      <div class="text-secondary small text-uppercase">Temperature Range</div>
+      <div class="fs-4 fw-bold text-cyan mt-1" id="statTempRange">-- / -- °C</div>
+      <div class="small text-muted" id="statTempAvg">Avg: -- °C</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="va-card text-center py-3">
+      <div class="text-secondary small text-uppercase">Pressure Range</div>
+      <div class="fs-4 fw-bold text-cyan mt-1" id="statPressRange">-- / -- hPa</div>
+      <div class="small text-muted" id="statPressAvg">Avg: -- hPa</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="va-card text-center py-3">
+      <div class="text-secondary small text-uppercase">Data Integrity</div>
+      <div class="fs-4 fw-bold text-success mt-1" id="statDataIntegrity">100%</div>
+      <div class="small text-muted">Valid measurements</div>
+    </div>
+  </div>
+</div>
+
+<!-- Historical Chart -->
+<div class="va-card mb-4">
+  <div class="chart-header">
+    <h3 class="va-card-title m-0">Historical Environmental Trajectory</h3>
+    <span class="text-secondary small" id="chartRangeLabel">Showing selected range</span>
+  </div>
+  <div class="chart-box" style="height: 320px;">
+    <canvas id="historyChart"></canvas>
+  </div>
+</div>
+
+<!-- Paginated Table of Readings -->
+<div class="va-card">
+  <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+    <div>
+      <h3 class="va-card-title m-0">Sensor Readings Log</h3>
+      <small class="text-secondary" id="historyTableSummary">Showing page 1</small>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+      <label class="text-secondary small" for="pageSizeSelect">Per page:</label>
+      <select id="pageSizeSelect" class="va-select py-1 px-2 text-white">
+        <option value="25" selected>25</option>
+        <option value="50">50</option>
+        <option value="100">100</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="va-table-container mb-3">
+    <table class="va-table" id="historyTable">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Timestamp (Local)</th>
+          <th>Temperature (°C)</th>
+          <th>Pressure (hPa)</th>
+          <th>Source</th>
+          <th>Validity</th>
+        </tr>
+      </thead>
+      <tbody id="historyTbody">
+        <tr>
+          <td colspan="6" class="text-center py-4 text-secondary">
+            <div class="spinner-glow mx-auto mb-2"></div>
+            Loading database records...
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination Controls -->
+  <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <button class="va-btn va-btn-secondary va-btn-sm" id="btnPrevPage" disabled>&larr; Previous</button>
+    <span class="text-secondary small" id="pageIndicator">Page 1 of 1</span>
+    <button class="va-btn va-btn-secondary va-btn-sm" id="btnNextPage" disabled>Next &rarr;</button>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/history.js') }}"></script>
+{% endblock %}

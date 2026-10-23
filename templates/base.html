@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Environmental Overview{% endblock %} - {{ WORDMARK }}</title>
+  
+  <!-- Inter font from system or web -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Bootstrap 5 CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
+  <!-- Custom Design System Stylesheet -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+  {% block head_extra %}{% endblock %}
+</head>
+<body>
+
+<div class="app-wrapper">
+  <!-- Mobile Sidebar Backdrop -->
+  <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+  <!-- Sidebar Navigation -->
+  <aside class="app-sidebar" id="appSidebar">
+    <div class="sidebar-header">
+      <div>
+        <div class="brand-wordmark">
+          <span class="accent-va">VA</span>
+          <span>|</span>
+          <span>Virtual Atmosphere</span>
+        </div>
+        <div class="brand-tagline">{{ TAGLINE }}</div>
+      </div>
+    </div>
+
+    <ul class="sidebar-nav">
+      <li class="sidebar-nav-item">
+        <a href="{{ url_for('dashboard') }}" class="sidebar-nav-link {% if active_page == 'dashboard' %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7"></rect>
+            <rect x="14" y="3" width="7" height="7"></rect>
+            <rect x="14" y="14" width="7" height="7"></rect>
+            <rect x="3" y="14" width="7" height="7"></rect>
+          </svg>
+          <span>Overview</span>
+        </a>
+      </li>
+
+      <li class="sidebar-nav-item">
+        <a href="{{ url_for('live_monitor') }}" class="sidebar-nav-link {% if active_page == 'live' %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+          </svg>
+          <span>Live Monitor</span>
+        </a>
+      </li>
+
+      <li class="sidebar-nav-item">
+        <a href="{{ url_for('history') }}" class="sidebar-nav-link {% if active_page == 'history' %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+          <span>Historical Data</span>
+        </a>
+      </li>
+
+      <li class="sidebar-nav-item">
+        <a href="{{ url_for('alerts') }}" class="sidebar-nav-link {% if active_page == 'alerts' %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+          <span>Alerts</span>
+          <span class="badge bg-danger ms-auto d-none" id="sidebarAlertBadge">!</span>
+        </a>
+      </li>
+
+      <li class="sidebar-nav-item">
+        <a href="{{ url_for('system') }}" class="sidebar-nav-link {% if active_page == 'system' %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
+            <rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
+            <line x1="6" y1="6" x2="6.01" y2="6"></line>
+            <line x1="6" y1="18" x2="6.01" y2="18"></line>
+          </svg>
+          <span>Sensor & System</span>
+        </a>
+      </li>
+
+      <li class="sidebar-nav-item">
+        <a href="{{ url_for('about') }}" class="sidebar-nav-link {% if active_page == 'about' %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="16" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+          </svg>
+          <span>About Project</span>
+        </a>
+      </li>
+    </ul>
+
+    <div class="sidebar-footer">
+      <div class="d-flex justify-content-between align-items-center mb-1">
+        <span>Hardware</span>
+        <span class="text-white">RPi 3B+ &amp; BMP280</span>
+      </div>
+      <div class="d-flex justify-content-between align-items-center">
+        <span>Platform</span>
+        <span class="text-white">v{{ VERSION }}</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Content Area -->
+  <main class="app-main">
+    <!-- Top Header -->
+    <header class="app-header">
+      <div class="header-left">
+        <button class="mobile-menu-toggle" id="menuToggle" aria-label="Toggle navigation">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+
+        <div class="header-title-box">
+          <h1 id="pageHeading">{% block header_title %}Environmental Overview{% endblock %}</h1>
+          <div class="header-meta">
+            <span id="currentClock">--:--:--</span>
+            <span>&bull;</span>
+            <span id="currentDate">--</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <!-- Sensor Status Indicator Pill -->
+        <div id="sensorStatusPill" class="status-pill demo" title="Sensor Connection Status">
+          <span class="status-dot"></span>
+          <span id="sensorStatusText">Connecting...</span>
+        </div>
+
+        <!-- Refresh Controls -->
+        <button id="btnRefreshNow" class="va-btn va-btn-secondary va-btn-sm" title="Refresh data immediately">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <polyline points="1 20 1 14 7 14"></polyline>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+          </svg>
+          <span class="d-none d-sm-inline">Refresh</span>
+        </button>
+
+        <!-- Auto Refresh Toggle -->
+        <div class="form-check form-switch m-0 d-none d-md-flex align-items-center" title="Toggle automatic data polling">
+          <input class="form-check-input" type="checkbox" id="autoRefreshSwitch" checked>
+          <label class="form-check-label ms-2 small text-secondary" for="autoRefreshSwitch">Auto-refresh</label>
+        </div>
+      </div>
+    </header>
+
+    <!-- Demo Mode Banner (shown when demo mode is active) -->
+    <div id="demoModeBanner" class="demo-banner {% if app_mode != 'demo' %}d-none{% endif %}">
+      <div>
+        <strong>DEMO DATA ACTIVE:</strong> Running in simulated sensor mode on standard computer without physical Raspberry Pi I²C hardware. All readings are clearly marked as <code>demo</code>.
+      </div>
+      <div class="d-flex align-items-center gap-2">
+        <button id="btnToggleDemoSpike" class="va-btn va-btn-secondary va-btn-sm text-warning" title="Simulate a high temperature spike to test alerts">
+          Test Alert Spike
+        </button>
+      </div>
+    </div>
+
+    <!-- Active Warning Alert Panel (injected when active) -->
+    <div id="globalAlertContainer" class="px-4 pt-3 d-none">
+      <div class="alert-warning-banner" id="globalAlertBanner">
+        <div>
+          <div class="alert-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+              <line x1="12" y1="9" x2="12" y2="13"></line>
+              <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+            <span id="globalAlertTitle">TEMPERATURE THRESHOLD WARNING</span>
+          </div>
+          <p id="globalAlertMessage">Sensor reading has exceeded the safety threshold.</p>
+          <small class="text-white-50" id="globalAlertDisclaimer">Configurable temperature warning for school environmental monitoring. Not a medical or industrial diagnosis.</small>
+        </div>
+        <div class="d-flex gap-2">
+          <button id="btnAcknowledgeAlert" class="va-btn va-btn-danger va-btn-sm">
+            Acknowledge Alert
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Page Body Container -->
+    <div class="page-container">
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+</div>
+
+<!-- Vendor Scripts -->
+<script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/chart.umd.min.js') }}"></script>
+<!-- Core App Script -->
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

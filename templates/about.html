@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+
+{% block title %}About Project - Virtual Atmosphere{% endblock %}
+{% block header_title %}About Virtual Atmosphere (VA){% endblock %}
+
+{% block content %}
+<div class="row g-4 mb-4">
+  <!-- Mission & Overview -->
+  <div class="col-12 col-lg-8">
+    <div class="va-card h-100">
+      <div class="va-card-header">
+        <h2 class="va-card-title m-0">Project Overview &amp; Educational Purpose</h2>
+        <span class="badge bg-primary bg-opacity-25 text-info">STEM &bull; IoT Science</span>
+      </div>
+      <p class="text-white lead fs-6">
+        <strong>Virtual Atmosphere (VA)</strong> is a school environmental monitoring and Internet-of-Things (IoT) science platform designed to cultivate hands-on understanding of physical atmospheric phenomena, embedded Linux systems, and real-time telemetry.
+      </p>
+      <p class="text-secondary">
+        By connecting a precision Bosch BMP280 environmental sensor directly to a Raspberry Pi 3 Model B+ via the hardware Inter-Integrated Circuit (I²C) bus, the platform continuously measures, validates, logs, and visualizes local ambient temperature and barometric pressure.
+      </p>
+
+      <div class="row g-3 my-2">
+        <div class="col-sm-4">
+          <div class="p-3 rounded bg-secondary bg-opacity-40 border border-secondary border-opacity-40 text-center">
+            <div class="text-cyan fw-bold fs-5">Direct I²C</div>
+            <div class="small text-secondary mt-1">Direct hardware connection, zero intermediate microcontrollers (No ESP32)</div>
+          </div>
+        </div>
+        <div class="col-sm-4">
+          <div class="p-3 rounded bg-secondary bg-opacity-40 border border-secondary border-opacity-40 text-center">
+            <div class="text-cyan fw-bold fs-5">Local SQLite</div>
+            <div class="small text-secondary mt-1">Zero cloud dependencies; fully offline school intranet deployable</div>
+          </div>
+        </div>
+        <div class="col-sm-4">
+          <div class="p-3 rounded bg-secondary bg-opacity-40 border border-secondary border-opacity-40 text-center">
+            <div class="text-cyan fw-bold fs-5">Active Warnings</div>
+            <div class="small text-secondary mt-1">Configurable threshold detection with persistent audit logging</div>
+          </div>
+        </div>
+      </div>
+
+      <h3 class="va-card-title mt-4 mb-2">Scientific Atmospheric Principles</h3>
+      <p class="text-secondary small">
+        Atmospheric pressure reflects the weight of the air column pressing down on the Earth's surface. At sea level, standard atmospheric pressure is <strong>1013.25 hPa</strong> (hectopascals). Weather systems induce barometric fluctuations: rising pressure typically correlates with denser, cooler, or clearing air, whereas falling barometric trends often indicate advancing storm fronts or low-pressure troughs.
+      </p>
+      <p class="text-secondary small">
+        The BMP280 sensor also records subtle <em>semi-diurnal atmospheric tides</em>—a worldwide cyclic pressure wave with peaks around 10:00 and 22:00 local solar time, caused by solar heating and absorption in the upper atmosphere.
+      </p>
+    </div>
+  </div>
+
+  <!-- Hardware Specifications & Sensor Constraints -->
+  <div class="col-12 col-lg-4">
+    <div class="va-card h-100">
+      <div class="va-card-header">
+        <h2 class="va-card-title m-0">Hardware Specifications</h2>
+        <span class="badge bg-secondary text-white">Verified Setup</span>
+      </div>
+
+      <ul class="list-group list-group-flush bg-transparent text-secondary small">
+        <li class="list-group-item bg-transparent text-secondary px-0">
+          <strong class="text-white">Host Computer:</strong><br>
+          Raspberry Pi 3 Model B+ (Quad Core 1.4GHz, 1GB RAM)
+        </li>
+        <li class="list-group-item bg-transparent text-secondary px-0">
+          <strong class="text-white">Sensor Module:</strong><br>
+          GY-BMP280 Barometric Pressure &amp; Temperature Breakout
+        </li>
+        <li class="list-group-item bg-transparent text-secondary px-0">
+          <strong class="text-white">Hardware Interface:</strong><br>
+          I²C Bus 1 (<code class="text-cyan">/dev/i2c-1</code>), 3.3V Logic Level
+        </li>
+        <li class="list-group-item bg-transparent text-secondary px-0">
+          <strong class="text-white">Operating System:</strong><br>
+          Raspberry Pi OS (Debian Bookworm / Bullseye 32 or 64-bit)
+        </li>
+        <li class="list-group-item bg-transparent text-secondary px-0">
+          <strong class="text-white">Operating Voltage:</strong><br>
+          3.3V DC (Physical Pin 1)
+        </li>
+      </ul>
+
+      <div class="p-3 rounded bg-secondary bg-opacity-30 border border-secondary border-opacity-50 mt-3">
+        <h6 class="text-warning fs-6 mb-1">Humidity Transparency Notice</h6>
+        <p class="small text-secondary mb-0">
+          The BMP280 silicon chip contains piezoresistive pressure and temperature cells. It <strong>does not contain a relative humidity sensor</strong> (unlike the BME280). Virtual Atmosphere adheres to honest scientific reporting and never synthesizes or displays fake humidity data.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Architecture Pipeline -->
+<div class="va-card mb-4">
+  <h3 class="va-card-title mb-3">System Architecture &amp; Data Pipeline</h3>
+  <div class="row g-3 text-center">
+    <div class="col-12 col-md-3">
+      <div class="p-3 rounded bg-secondary bg-opacity-30 border border-secondary border-opacity-40 h-100">
+        <div class="badge bg-info bg-opacity-25 text-info mb-2">Layer 1: Sensor</div>
+        <div class="fw-bold text-white">Bosch BMP280</div>
+        <div class="small text-secondary mt-1">Direct I²C bus polling, hardware registers, calibration polynomial</div>
+      </div>
+    </div>
+    <div class="col-12 col-md-3">
+      <div class="p-3 rounded bg-secondary bg-opacity-30 border border-secondary border-opacity-40 h-100">
+        <div class="badge bg-primary bg-opacity-25 text-primary mb-2">Layer 2: Engine</div>
+        <div class="fw-bold text-white">SensorService</div>
+        <div class="small text-secondary mt-1">Python daemon thread, range validation (-40 to 85°C), alert triggers</div>
+      </div>
+    </div>
+    <div class="col-12 col-md-3">
+      <div class="p-3 rounded bg-secondary bg-opacity-30 border border-secondary border-opacity-40 h-100">
+        <div class="badge bg-success bg-opacity-25 text-success mb-2">Layer 3: Storage</div>
+        <div class="fw-bold text-white">SQLite (WAL Mode)</div>
+        <div class="small text-secondary mt-1">Zero-overhead, persistent ACID storage, parameterized indexing</div>
+      </div>
+    </div>
+    <div class="col-12 col-md-3">
+      <div class="p-3 rounded bg-secondary bg-opacity-30 border border-secondary border-opacity-40 h-100">
+        <div class="badge bg-warning bg-opacity-25 text-warning mb-2">Layer 4: Interface</div>
+        <div class="fw-bold text-white">Flask &amp; Chart.js</div>
+        <div class="small text-secondary mt-1">REST API + Dark Theme responsive telemetry interface</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Safety & Disclaimers -->
+<div class="va-card">
+  <div class="va-card-header">
+    <h3 class="va-card-title m-0">Student Safety &amp; Educational Disclaimers</h3>
+    <span class="badge bg-warning bg-opacity-20 text-warning">Notice</span>
+  </div>
+  <p class="text-secondary small">
+    <strong>Prototype Status:</strong> Virtual Atmosphere is designed as an educational school IoT demonstration platform. The temperature alert system is a software-configurable event detector designed to illustrate automation, threshold triggers, and environmental observation.
+  </p>
+  <p class="text-secondary small m-0">
+    <strong>Health &amp; Life-Safety Disclaimer:</strong> The threshold alerts provided by this software are <em>not</em> certified for clinical medical diagnostics, official thermal comfort index certifications (such as WBGT or OSHA heat stress assessments), or industrial safety shutoffs.
+  </p>
+</div>
+{% endblock %}

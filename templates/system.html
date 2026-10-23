@@ -1,0 +1,286 @@
+{% extends "base.html" %}
+
+{% block title %}Sensor &amp; System - Virtual Atmosphere{% endblock %}
+{% block header_title %}Sensor &amp; System Diagnostics{% endblock %}
+
+{% block content %}
+<div class="row g-4 mb-4">
+  <!-- Sensor Specifications & Hardware Status -->
+  <div class="col-12 col-lg-6">
+    <div class="va-card h-100">
+      <div class="va-card-header">
+        <h2 class="va-card-title m-0">Hardware Sensor Interface</h2>
+        <span class="status-pill demo" id="sysSensorPill">
+          <span class="status-dot"></span>
+          <span id="sysSensorStatusText">Checking</span>
+        </span>
+      </div>
+
+      <table class="table table-dark table-borderless text-secondary small align-middle mb-0">
+        <tbody>
+          <tr>
+            <td class="text-secondary">Sensor Model:</td>
+            <td class="text-white fw-semibold">Bosch Sensortec BMP280</td>
+          </tr>
+          <tr>
+            <td class="text-secondary">Physical Bus:</td>
+            <td class="text-white">I²C Bus 1 (<code class="text-cyan">/dev/i2c-1</code> on Raspberry Pi 3B+)</td>
+          </tr>
+          <tr>
+            <td class="text-secondary">Detected Address:</td>
+            <td>
+              <span class="badge bg-secondary text-white" id="sysDetectedAddress">0x76 / 0x77</span>
+              <span class="text-muted ms-2">(Default candidate addresses)</span>
+            </td>
+          </tr>
+          <tr>
+            <td class="text-secondary">Measured Quantities:</td>
+            <td class="text-white">Temperature (°C) &amp; Atmospheric Pressure (hPa)</td>
+          </tr>
+          <tr>
+            <td class="text-secondary">Relative Humidity:</td>
+            <td class="text-muted"><span class="badge bg-secondary text-white-50">Not Supported</span> (BMP280 lacks humidity cell)</td>
+          </tr>
+          <tr>
+            <td class="text-secondary">Operating Range:</td>
+            <td class="text-white">-40°C to +85°C &bull; 300 to 1100 hPa</td>
+          </tr>
+          <tr>
+            <td class="text-secondary">Absolute Accuracy:</td>
+            <td class="text-white">&plusmn;0.5°C (Temp) &bull; &plusmn;1.0 hPa (Pressure)</td>
+          </tr>
+          <tr>
+            <td class="text-secondary">Last Successful Read:</td>
+            <td class="text-white" id="sysLastReadTime">--</td>
+          </tr>
+          <tr>
+            <td class="text-secondary">Data Freshness:</td>
+            <td class="text-white" id="sysFreshness">--</td>
+          </tr>
+          <tr>
+            <td class="text-secondary">Consecutive Failures:</td>
+            <td class="text-white" id="sysConsecutiveErrors">0</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Runtime Mode & Application Settings -->
+  <div class="col-12 col-lg-6">
+    <div class="va-card h-100">
+      <div class="va-card-header">
+        <h2 class="va-card-title m-0">Runtime Environment &amp; Controls</h2>
+        <span class="badge bg-primary bg-opacity-25 text-info" id="sysCurrentModeBadge">Demo Mode</span>
+      </div>
+
+      <div class="mb-4">
+        <label class="form-label text-secondary small fw-semibold">Active Operational Mode</label>
+        <div class="d-flex gap-2">
+          <button type="button" class="va-btn va-btn-secondary flex-fill" id="btnSetDemoMode">
+            Demo Mode (Simulated Data)
+          </button>
+          <button type="button" class="va-btn va-btn-secondary flex-fill" id="btnSetLiveMode">
+            Live Mode (Raspberry Pi I²C)
+          </button>
+        </div>
+        <div class="small text-muted mt-2" id="sysModeExplanation">
+          Demo mode generates physics-based diurnal temperature and pressure variations on computers without physical Raspberry Pi I²C hardware.
+        </div>
+      </div>
+
+      <hr class="border-secondary border-opacity-25 my-3">
+
+      <!-- Sampling Interval Setting -->
+      <form id="formSamplingInterval" class="mb-3">
+        <label for="inputSamplingInterval" class="form-label text-secondary small fw-semibold">Sensor Polling Interval</label>
+        <div class="input-group">
+          <input type="number" min="2" max="300" class="form-control va-input" id="inputSamplingInterval" value="10" required>
+          <span class="input-group-text bg-secondary text-white border-secondary">seconds</span>
+          <button type="submit" class="va-btn va-btn-primary" id="btnSaveSampling">Save Interval</button>
+        </div>
+        <div id="sysSamplingFeedback" class="small mt-2"></div>
+      </form>
+
+      <!-- Database Metrics -->
+      <hr class="border-secondary border-opacity-25 my-3">
+      <div class="row g-2 text-secondary small">
+        <div class="col-6">
+          <div class="p-2 rounded bg-secondary bg-opacity-40">
+            <div>Database Engine: <strong class="text-white">SQLite (WAL Mode)</strong></div>
+            <div>File Size: <strong class="text-white" id="sysDbSize">-- KB</strong></div>
+          </div>
+        </div>
+        <div class="col-6">
+          <div class="p-2 rounded bg-secondary bg-opacity-40">
+            <div>Total Readings: <strong class="text-white" id="sysTotalReadings">--</strong></div>
+            <div>Total Alerts: <strong class="text-white" id="sysTotalAlerts">--</strong></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Hardware Wiring Diagram & Instructions -->
+<div class="va-card">
+  <h3 class="va-card-title mb-3">Raspberry Pi 3 Model B+ Pinout &amp; I²C Wiring Reference</h3>
+  <div class="row g-4">
+    <div class="col-12 col-md-6">
+      <div class="va-table-container">
+        <table class="va-table">
+          <thead>
+            <tr>
+              <th>BMP280 Pin</th>
+              <th>Raspberry Pi Pin</th>
+              <th>Header Physical Pin</th>
+              <th>Function</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong class="text-cyan">VCC / VIN</strong></td>
+              <td>3.3V Power</td>
+              <td><strong>Physical Pin 1</strong></td>
+              <td>Power Supply (+3.3V DC)</td>
+            </tr>
+            <tr>
+              <td><strong class="text-cyan">GND</strong></td>
+              <td>Ground</td>
+              <td><strong>Physical Pin 6</strong></td>
+              <td>Common Ground (0V)</td>
+            </tr>
+            <tr>
+              <td><strong class="text-cyan">SDA</strong></td>
+              <td>GPIO 2 (SDA1)</td>
+              <td><strong>Physical Pin 3</strong></td>
+              <td>I²C Data Line</td>
+            </tr>
+            <tr>
+              <td><strong class="text-cyan">SCL</strong></td>
+              <td>GPIO 3 (SCL1)</td>
+              <td><strong>Physical Pin 5</strong></td>
+              <td>I²C Clock Line</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="col-12 col-md-6">
+      <div class="p-3 rounded bg-secondary bg-opacity-50 border border-secondary border-opacity-50 h-100">
+        <h5 class="text-white fs-6 mb-2">Hardware Connection Safeguards</h5>
+        <ul class="text-secondary small ps-3 mb-2">
+          <li><strong>Voltage Warning:</strong> Ensure breakout is powered from <strong>3.3V (Pin 1)</strong>. Direct 5V connection can permanently damage the BMP280 3.3V logic level pins.</li>
+          <li><strong>I²C Address Selection:</strong> GY-BMP280 modules with SDO tied to GND default to address <code>0x76</code>. Modules with SDO tied to VCC default to <code>0x77</code>.</li>
+          <li><strong>Bus Verification:</strong> Run <code class="text-white">sudo i2cdetect -y 1</code> in Raspberry Pi OS terminal to verify that 76 or 77 is illuminated.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  function loadSystemDiagnostics() {
+    fetch("/api/status")
+      .then(r => r.json())
+      .then(data => {
+        const s = data.sensor;
+        const db = data.database;
+        const pill = document.getElementById("sysSensorPill");
+        const statusText = document.getElementById("sysSensorStatusText");
+        
+        if (s.mode === "demo") {
+          pill.className = "status-pill demo";
+          statusText.textContent = "Demo Simulated";
+          document.getElementById("sysCurrentModeBadge").textContent = "Demo Mode";
+          document.getElementById("sysCurrentModeBadge").className = "badge bg-warning bg-opacity-25 text-warning";
+        } else if (s.is_connected) {
+          pill.className = "status-pill online";
+          statusText.textContent = "Online (I²C)";
+          document.getElementById("sysCurrentModeBadge").textContent = "Live Hardware Mode";
+          document.getElementById("sysCurrentModeBadge").className = "badge bg-success bg-opacity-25 text-success";
+        } else {
+          pill.className = "status-pill offline";
+          statusText.textContent = "Offline (No Hardware)";
+          document.getElementById("sysCurrentModeBadge").textContent = "Live Mode (Offline)";
+          document.getElementById("sysCurrentModeBadge").className = "badge bg-danger bg-opacity-25 text-danger";
+        }
+
+        document.getElementById("sysDetectedAddress").textContent = s.address || "0x76 / 0x77";
+        document.getElementById("sysLastReadTime").textContent = s.last_reading_time ? new Date(s.last_reading_time).toLocaleString() : "No readings yet";
+        document.getElementById("sysFreshness").textContent = s.data_freshness_seconds !== null ? s.data_freshness_seconds + "s ago" : "--";
+        document.getElementById("sysConsecutiveErrors").textContent = s.consecutive_errors;
+        
+        if (db) {
+          document.getElementById("sysDbSize").textContent = db.file_size_kb + " KB";
+          document.getElementById("sysTotalReadings").textContent = db.readings_count;
+          document.getElementById("sysTotalAlerts").textContent = db.alerts_count;
+        }
+      })
+      .catch(err => console.error("Diagnostics load error:", err));
+
+    fetch("/api/settings")
+      .then(r => r.json())
+      .then(data => {
+        if (data.settings) {
+          document.getElementById("inputSamplingInterval").value = data.settings.sampling_interval_seconds;
+        }
+      });
+  }
+
+  loadSystemDiagnostics();
+  setInterval(loadSystemDiagnostics, 5000);
+
+  // Mode Switchers
+  document.getElementById("btnSetDemoMode").addEventListener("click", function() {
+    fetch("/api/mode", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mode: "demo" })
+    }).then(r => r.json()).then(res => {
+      loadSystemDiagnostics();
+      alert(res.message);
+      location.reload();
+    });
+  });
+
+  document.getElementById("btnSetLiveMode").addEventListener("click", function() {
+    fetch("/api/mode", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mode: "live" })
+    }).then(r => r.json()).then(res => {
+      loadSystemDiagnostics();
+      alert(res.message);
+      location.reload();
+    });
+  });
+
+  // Sampling form
+  document.getElementById("formSamplingInterval").addEventListener("submit", function(e) {
+    e.preventDefault();
+    const interval = parseInt(document.getElementById("inputSamplingInterval").value);
+    const feedback = document.getElementById("sysSamplingFeedback");
+
+    fetch("/api/settings/sampling_interval", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ interval_seconds: interval })
+    })
+      .then(r => r.json())
+      .then(res => {
+        if (res.success) {
+          feedback.className = "small mt-2 text-success";
+          feedback.textContent = res.message;
+        } else {
+          feedback.className = "small mt-2 text-danger";
+          feedback.textContent = res.error;
+        }
+      });
+  });
+});
+</script>
+{% endblock %}

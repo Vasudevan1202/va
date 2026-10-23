@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+
+{% block title %}Alerts - Virtual Atmosphere{% endblock %}
+{% block header_title %}Temperature Alerts &amp; Thresholds{% endblock %}
+
+{% block content %}
+<div class="row g-4 mb-4">
+  <!-- Threshold Settings Card -->
+  <div class="col-12 col-lg-5">
+    <div class="va-card h-100">
+      <div class="va-card-header">
+        <h2 class="va-card-title m-0">Threshold Settings</h2>
+        <span class="badge bg-primary bg-opacity-25 text-info">Configurable Parameter</span>
+      </div>
+      <p class="text-secondary small">
+        Define the high temperature trigger point. If incoming BMP280 temperature measurements meet or exceed this value, a high-priority warning is registered.
+      </p>
+
+      <form id="formAlertThreshold" class="mt-3">
+        <div class="mb-3">
+          <label for="inputAlertThreshold" class="form-label text-secondary small">High Temperature Threshold (°C)</label>
+          <div class="input-group">
+            <input type="number" step="0.5" min="0" max="70" class="form-control va-input" id="inputAlertThreshold" value="35.0" required>
+            <span class="input-group-text bg-secondary text-white border-secondary">°C</span>
+            <button type="submit" class="va-btn va-btn-primary" id="btnSubmitThreshold">Update Threshold</button>
+          </div>
+        </div>
+      </form>
+      <div id="alertsThresholdFeedback" class="small"></div>
+
+      <hr class="my-3 border-secondary border-opacity-25">
+
+      <h4 class="text-secondary small text-uppercase fw-semibold mb-2">Alert Deduplication &amp; Resolution Rules</h4>
+      <ul class="text-secondary small ps-3 mb-3">
+        <li class="mb-1"><strong>Non-Spamming:</strong> Only one alert event is recorded for a continuous threshold violation; repeated polling cycles do not duplicate records.</li>
+        <li class="mb-1"><strong>Operator Acknowledgement:</strong> Users can acknowledge an active alert to confirm awareness.</li>
+        <li class="mb-1"><strong>Hysteresis Recovery:</strong> Once the ambient temperature falls 0.5°C below the threshold, active/acknowledged alerts are automatically marked as resolved.</li>
+      </ul>
+
+      <div class="p-3 rounded bg-secondary bg-opacity-30 border border-secondary border-opacity-50">
+        <small class="text-muted d-block">
+          <strong>Educational Prototype Notice:</strong> This environmental warning system is developed for school IoT science projects and environmental monitoring. It does not provide medical diagnoses or certified occupational heat-stress (WBGT/OSHA) assessments.
+        </small>
+      </div>
+    </div>
+  </div>
+
+  <!-- Active Alert Spotlight Card -->
+  <div class="col-12 col-lg-7">
+    <div class="va-card h-100">
+      <div class="va-card-header">
+        <h2 class="va-card-title m-0">Current Alert Status</h2>
+        <span class="status-pill online" id="spotlightStatusPill">
+          <span class="status-dot"></span>
+          <span id="spotlightStatusText">Nominal / No Active Alerts</span>
+        </span>
+      </div>
+
+      <div id="spotlightNoAlert" class="state-container py-5">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+          <polyline points="22 4 12 14.01 9 11.01"></polyline>
+        </svg>
+        <h4 class="text-white">All Readings Within Safe Parameter Limits</h4>
+        <p class="text-secondary small max-w-sm mb-0">
+          Temperature is currently below the active trigger threshold.
+        </p>
+      </div>
+
+      <div id="spotlightActiveAlert" class="d-none">
+        <div class="alert-warning-banner mb-3">
+          <div>
+            <div class="alert-title">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                <line x1="12" y1="9" x2="12" y2="13"></line>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+              </svg>
+              <span>TEMPERATURE THRESHOLD EXCEEDED</span>
+            </div>
+            <p id="spotlightActiveText">Reading has reached or exceeded the configured threshold.</p>
+          </div>
+          <button id="btnSpotlightAcknowledge" class="va-btn va-btn-danger va-btn-sm">
+            Acknowledge Now
+          </button>
+        </div>
+
+        <div class="row g-3">
+          <div class="col-sm-4">
+            <div class="p-3 rounded bg-secondary bg-opacity-40 border border-secondary border-opacity-40">
+              <div class="text-secondary small text-uppercase">Recorded Temp</div>
+              <div class="fs-4 fw-bold text-danger mt-1" id="spotlightMeasured">-- °C</div>
+            </div>
+          </div>
+          <div class="col-sm-4">
+            <div class="p-3 rounded bg-secondary bg-opacity-40 border border-secondary border-opacity-40">
+              <div class="text-secondary small text-uppercase">Threshold Set</div>
+              <div class="fs-4 fw-bold text-white mt-1" id="spotlightThreshold">-- °C</div>
+            </div>
+          </div>
+          <div class="col-sm-4">
+            <div class="p-3 rounded bg-secondary bg-opacity-40 border border-secondary border-opacity-40">
+              <div class="text-secondary small text-uppercase">Trigger Time</div>
+              <div class="fs-6 fw-bold text-white mt-2" id="spotlightTimestamp">--</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Alerts History Table -->
+<div class="va-card">
+  <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+    <div>
+      <h3 class="va-card-title m-0">Alert Event Audit Log</h3>
+      <small class="text-secondary">Persistent database log of all recorded threshold events</small>
+    </div>
+    <div class="btn-group-pill" id="alertFilterGroup">
+      <button type="button" class="active" data-status="all">All</button>
+      <button type="button" data-status="active">Active</button>
+      <button type="button" data-status="acknowledged">Acknowledged</button>
+      <button type="button" data-status="resolved">Resolved</button>
+    </div>
+  </div>
+
+  <div class="va-table-container">
+    <table class="va-table" id="alertsTable">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Timestamp (Local)</th>
+          <th>Event Type</th>
+          <th>Trigger Reading</th>
+          <th>Threshold</th>
+          <th>Status</th>
+          <th>Acknowledged At</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="alertsTbody">
+        <tr>
+          <td colspan="8" class="text-center py-4 text-secondary">
+            <div class="spinner-glow mx-auto mb-2"></div>
+            Loading alert history...
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/alerts.js') }}"></script>
+{% endblock %}
