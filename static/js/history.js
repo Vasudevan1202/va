@@ -24,24 +24,24 @@
           {
             label: "Temperature (°C)",
             data: [],
-            borderColor: "#51D8FF",
-            backgroundColor: "rgba(81, 216, 255, 0.08)",
+            borderColor: "#ef4444",
+            backgroundColor: "rgba(239, 68, 68, 0.1)",
             borderWidth: 2,
             yAxisID: "yTemp",
             tension: 0.3,
             fill: false,
-            pointRadius: 1
+            pointRadius: 2
           },
           {
             label: "Pressure (hPa)",
             data: [],
-            borderColor: "#1677FF",
-            backgroundColor: "rgba(22, 119, 255, 0.08)",
+            borderColor: "#ea580c",
+            backgroundColor: "rgba(234, 88, 12, 0.1)",
             borderWidth: 2,
             yAxisID: "yPress",
             tension: 0.3,
             fill: false,
-            pointRadius: 1
+            pointRadius: 2
           }
         ]
       },
@@ -52,38 +52,40 @@
         plugins: {
           legend: {
             display: true,
-            labels: { color: "#FFFFFF", font: { size: 12 } }
+            labels: { color: "#1f1412", font: { size: 12, family: "'Inter', sans-serif", weight: "600" } }
           },
           tooltip: {
-            backgroundColor: "rgba(16, 38, 58, 0.95)",
-            titleColor: "#51D8FF",
-            borderColor: "#243B50",
+            backgroundColor: "rgba(255, 255, 255, 0.96)",
+            titleColor: "#1f1412",
+            bodyColor: "#5a463e",
+            borderColor: "rgba(230, 210, 195, 0.9)",
             borderWidth: 1,
             padding: 10
           }
         },
         scales: {
           x: {
-            grid: { color: "rgba(36, 59, 80, 0.4)" },
-            ticks: { color: "#91A9BF", maxTicksLimit: 10 }
+            grid: { color: "rgba(225, 200, 180, 0.3)" },
+            ticks: { color: "#736259", maxTicksLimit: 10 }
           },
           yTemp: {
             type: "linear",
             position: "left",
-            title: { display: true, text: "Temperature (°C)", color: "#51D8FF" },
-            grid: { color: "rgba(36, 59, 80, 0.4)" },
-            ticks: { color: "#51D8FF" }
+            title: { display: true, text: "Temperature (°C)", color: "#ef4444" },
+            grid: { color: "rgba(225, 200, 180, 0.3)" },
+            ticks: { color: "#ef4444" }
           },
           yPress: {
             type: "linear",
             position: "right",
-            title: { display: true, text: "Pressure (hPa)", color: "#1677FF" },
+            title: { display: true, text: "Pressure (hPa)", color: "#ea580c" },
             grid: { drawOnChartArea: false },
-            ticks: { color: "#1677FF" }
+            ticks: { color: "#ea580c" }
           }
         }
       }
     });
+
   }
 
   function loadChartData() {

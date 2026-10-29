@@ -39,9 +39,22 @@ class Config(metaclass=ConfigMeta):
     IS_VERCEL = bool(os.environ.get("VERCEL") or os.environ.get("VERCEL_ENV"))
 
     # Runtime Mode: 'demo' or 'live'
-    # Default is 'demo' for immediate development/testing on laptops and Vercel.
-    # Set VA_MODE=live when running on Raspberry Pi with real BMP280 hardware.
-    MODE = "demo" if IS_VERCEL else os.environ.get("VA_MODE", "demo").strip().lower()
+    # 1. Respect explicit VA_MODE if configured ('live' or 'demo')
+    # 2. When running in production (VERCEL_ENV == 'production', FLASK_ENV in ('production', 'prod'), or when remote Turso DB is configured), default to 'live'
+    # 3. Otherwise in local development on non-hardware machines, default to 'demo'
+    _va_mode_env = os.environ.get("VA_MODE", "").strip().lower()
+    _is_prod_env = bool(
+        os.environ.get("VERCEL_ENV", "").strip().lower() == "production"
+        or os.environ.get("FLASK_ENV", "").strip().lower() in ("production", "prod")
+        or (os.environ.get("TURSO_DATABASE_URL", "").strip() and os.environ.get("TURSO_AUTH_TOKEN", "").strip())
+    )
+    if _va_mode_env in ("live", "demo"):
+        MODE = _va_mode_env
+    elif _is_prod_env:
+        MODE = "live"
+    else:
+        MODE = "demo"
+
 
     # Network Binding
     # Default to 127.0.0.1 for secure local development.
@@ -102,9 +115,23 @@ class Config(metaclass=ConfigMeta):
 
     @classmethod
     def is_production_mode(cls) -> bool:
-        """Determines if the application is running in production, on Vercel, or in live hardware mode."""
+        """Determines if the application is running in production, on Vercel production, or in live hardware mode."""
         flask_env = os.environ.get("FLASK_ENV", "").strip().lower()
-        return bool(cls.IS_VERCEL or cls.MODE == "live" or flask_env in ("production", "prod"))
+        vercel_env = os.environ.get("VERCEL_ENV", "").strip().lower()
+        va_mode = os.environ.get("VA_MODE", "").strip().lower() or cls.MODE
+        has_turso = bool(
+            (cls.TURSO_DATABASE_URL or os.environ.get("TURSO_DATABASE_URL", "").strip())
+            and (cls.TURSO_AUTH_TOKEN or os.environ.get("TURSO_AUTH_TOKEN", "").strip())
+        )
+        return bool(
+            cls.IS_VERCEL
+            or va_mode == "live"
+            or flask_env in ("production", "prod")
+            or vercel_env == "production"
+            or has_turso
+        )
+
+
 
     @classmethod
     def get_ingest_key(cls) -> Optional[str]:

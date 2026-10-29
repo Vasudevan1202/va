@@ -94,8 +94,9 @@ def create_app(test_config=None) -> Flask:
     db_path = app.config.get("DATABASE_PATH", Config.DATABASE_PATH)
     database.init_db(db_path)
 
-    # On serverless (Vercel), populate with demo data if newly initialized in /tmp
-    if Config.IS_VERCEL:
+    # Only auto-seed demo data in local non-production demo development when the database is empty
+    app_mode = app.config.get("MODE", Config.MODE)
+    if not app.config.get("TESTING") and not Config.is_production_mode() and app_mode == "demo":
         try:
             stats = database.get_db_stats(db_path=db_path)
             if stats.get("readings_count", 0) == 0:
@@ -103,6 +104,7 @@ def create_app(test_config=None) -> Flask:
                 seed_demo_history(hours=24, step_minutes=10, db_path=db_path)
         except Exception as e:
             logger.warning(f"Could not auto-seed demo data: {e}")
+
 
     # Initialize Sensor Service
     app_mode = app.config.get("MODE", Config.MODE)
@@ -267,13 +269,36 @@ def create_app(test_config=None) -> Flask:
     @app.route("/api/readings/latest", methods=["GET"])
     def api_readings_latest():
         """Returns the most recent measurement, trend vs previous, and daily stats."""
-        recent = database.get_recent_readings(limit=2, db_path=db_path)
-        today_stats = database.get_today_stats(db_path=db_path)
+        real_only = Config.is_production_mode() or request.args.get("real_only", "0").strip().lower() in ("1", "true")
+        recent = database.get_recent_readings(limit=2, db_path=db_path, real_only=real_only)
+        today_stats = database.get_today_stats(db_path=db_path, real_only=real_only)
         alert_info = AlertService.get_current_alert_status(db_path=db_path)
         sensor_status = app.sensor_service.get_status()
 
         latest = recent[0] if len(recent) > 0 else None
         previous = recent[1] if len(recent) > 1 else None
+
+        # Calculate exact telemetry freshness and honest connectivity state
+        age_seconds = None
+        is_live = False
+        is_stale = False
+        status_label = "No Live Reading"
+
+        if latest and latest.get("timestamp"):
+            try:
+                ts = datetime.fromisoformat(latest["timestamp"].replace("Z", "+00:00"))
+                now = datetime.now(timezone.utc)
+                age_seconds = max(0.0, round((now - ts).total_seconds(), 1))
+                if age_seconds < 180.0 and latest.get("source") not in ("demo", "simulated"):
+                    is_live = True
+                    is_stale = False
+                    status_label = "Live Data"
+                else:
+                    is_live = False
+                    is_stale = True
+                    status_label = "Sensor Offline"
+            except Exception:
+                age_seconds = None
 
         temp_trend = 0.0
         press_trend = 0.0
@@ -285,8 +310,8 @@ def create_app(test_config=None) -> Flask:
             if latest.get("humidity_pct") is not None and previous.get("humidity_pct") is not None:
                 humidity_trend = round(latest["humidity_pct"] - previous["humidity_pct"], 1)
 
-        latest_dht11 = database.get_latest_dht11_reading(db_path=db_path)
-        latest_bmp280 = database.get_latest_bmp280_reading(db_path=db_path)
+        latest_dht11 = database.get_latest_dht11_reading(db_path=db_path, real_only=real_only)
+        latest_bmp280 = database.get_latest_bmp280_reading(db_path=db_path, real_only=real_only)
 
         from weather_service import WeatherService
         heat_risk = None
@@ -302,6 +327,13 @@ def create_app(test_config=None) -> Flask:
             "previous": previous,
             "dht11": latest_dht11,
             "bmp280": latest_bmp280,
+            "freshness": {
+                "age_seconds": age_seconds,
+                "is_live": is_live,
+                "is_stale": is_stale,
+                "status_label": status_label,
+                "last_update_iso": latest.get("timestamp") if latest else None
+            },
             "trend": {
                 "temperature_delta_c": temp_trend,
                 "pressure_delta_hpa": press_trend,
@@ -312,6 +344,7 @@ def create_app(test_config=None) -> Flask:
             "alert": alert_info,
             "sensor": sensor_status
         }), 200
+
 
     @app.route("/api/ingest/dht11", methods=["POST"])
     def api_dht11_ingest():
@@ -662,7 +695,8 @@ def create_app(test_config=None) -> Flask:
         if time_range not in ["1h", "6h", "24h", "7d", "30d"]:
             time_range = "24h"
 
-        readings = database.get_readings_range(range_code=time_range, db_path=db_path)
+        real_only = Config.is_production_mode() or request.args.get("real_only", "0").strip().lower() in ("1", "true")
+        readings = database.get_readings_range(range_code=time_range, db_path=db_path, real_only=real_only)
 
         # Calculate time-range specific summary
         temps = [r["temperature_c"] for r in readings if r.get("temperature_c") is not None]
@@ -711,12 +745,14 @@ def create_app(test_config=None) -> Flask:
         except ValueError:
             limit = 25
 
+        real_only = Config.is_production_mode() or request.args.get("real_only", "0").strip().lower() in ("1", "true")
         readings, total = database.get_readings_history(
             start_iso=start,
             end_iso=end,
             page=page,
             limit=limit,
-            db_path=db_path
+            db_path=db_path,
+            real_only=real_only
         )
 
         total_pages = max(1, (total + limit - 1) // limit) if total > 0 else 1
@@ -744,12 +780,15 @@ def create_app(test_config=None) -> Flask:
         start = request.args.get("start", "").strip() or None
         end = request.args.get("end", "").strip() or None
 
+        real_only = Config.is_production_mode() or request.args.get("real_only", "0").strip().lower() in ("1", "true")
         readings = database.get_readings_for_export(
             range_code=time_range,
             start_iso=start,
             end_iso=end,
-            db_path=db_path
+            db_path=db_path,
+            real_only=real_only
         )
+
 
         output = io.StringIO()
         writer = csv.writer(output)

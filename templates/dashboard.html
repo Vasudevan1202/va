@@ -4,137 +4,133 @@
 {% block header_title %}Environmental Overview{% endblock %}
 
 {% block content %}
-<!-- Live Measurement Cards Row -->
+<!-- Section 1: Current Conditions Header matching Reference Image -->
+<div class="dashboard-section-header d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+  <div>
+    <h2 class="conditions-heading m-0">Current Conditions</h2>
+    <div class="conditions-meta" id="conditionsLastUpdated">Last updated: Fetching live data...</div>
+  </div>
+  <div>
+    <!-- Live Data / Sensor Offline Status Pill -->
+    <span class="live-status-pill online" id="currentConditionsPill" title="Real-Time Telemetry State">
+      <span class="status-dot" aria-hidden="true"></span>
+      <span id="currentConditionsStatusText">Connecting...</span>
+    </span>
+  </div>
+</div>
+
+<!-- Section 2: Three Prominent Metric Cards matching Reference Image -->
 <div class="row g-3 mb-4">
   <!-- Card 1: Temperature -->
-  <div class="col-12 col-sm-6 col-xl-3">
-    <div class="va-card h-100">
-      <div class="va-card-header">
-        <h3 class="va-card-title">Temperature</h3>
-        <span class="badge bg-secondary" id="tempThresholdBadge">Threshold: --°C</span>
+  <div class="col-12 col-md-4">
+    <div class="condition-card h-100">
+      <div class="card-icon-squircle temp-squircle" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"></path>
+        </svg>
       </div>
-      <div class="d-flex align-items-baseline">
-        <span class="va-metric-val" id="cardTempVal">--.-</span>
-        <span class="va-metric-unit">°C</span>
-      </div>
-      <div class="va-metric-subtext">
-        <span class="trend-badge trend-neutral" id="tempTrendBadge">
-          <span>&minus;</span> <span id="tempTrendVal">0.00</span>°C
-        </span>
-        <span class="text-secondary" id="tempTrendLabel">vs last read</span>
-      </div>
-      <hr class="my-2 border-secondary border-opacity-25">
-      <div class="d-flex justify-content-between text-secondary small">
-        <span>Min: <strong class="text-white" id="tempMin">--</strong></span>
-        <span>Avg: <strong class="text-white" id="tempAvg">--</strong></span>
-        <span>Max: <strong class="text-white" id="tempMax">--</strong></span>
-      </div>
-    </div>
-  </div>
-
-  <!-- Card 2: Relative Humidity -->
-  <div class="col-12 col-sm-6 col-xl-3">
-    <div class="va-card h-100">
-      <div class="va-card-header">
-        <h3 class="va-card-title">Relative Humidity</h3>
-        <span class="badge bg-info bg-opacity-25 text-cyan" id="cardHumidityBadge">BME280 / DHT11</span>
-      </div>
-      <div class="d-flex align-items-baseline">
-        <span class="va-metric-val" id="cardHumidityVal">--.-</span>
-        <span class="va-metric-unit">%</span>
-      </div>
-      <div class="va-metric-subtext">
-        <span class="trend-badge trend-neutral" id="humTrendBadge">
-          <span>&minus;</span> <span id="humTrendVal">0.0</span>%
-        </span>
-        <span class="text-secondary" id="humTrendLabel">vs last read</span>
-      </div>
-      <hr class="my-2 border-secondary border-opacity-25">
-      <div class="d-flex justify-content-between text-secondary small">
-        <span>Min: <strong class="text-white" id="humMin">--</strong></span>
-        <span>Avg: <strong class="text-white" id="humAvg">--</strong></span>
-        <span>Max: <strong class="text-white" id="humMax">--</strong></span>
+      <div class="card-metric-body">
+        <div class="card-metric-label">Temperature</div>
+        <div class="card-metric-value-row">
+          <span class="card-metric-value" id="cardTempVal">--.-</span>
+          <span class="card-metric-unit">°C</span>
+        </div>
+        <div class="d-flex align-items-center justify-content-between mt-1">
+          <span class="card-metric-status text-success fw-semibold" id="tempConditionStatus">Normal</span>
+          <span class="badge bg-secondary bg-opacity-10 text-muted small" id="tempThresholdBadge" style="font-size: 11px;">Threshold: 35.0°C</span>
+        </div>
+        <div class="d-flex justify-content-between text-muted small mt-2 pt-2 border-top border-light" style="font-size: 11px;">
+          <span>Min: <strong class="text-dark" id="tempMin">--</strong></span>
+          <span>Avg: <strong class="text-dark" id="tempAvg">--</strong></span>
+          <span>Max: <strong class="text-dark" id="tempMax">--</strong></span>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- Card 3: Heat-Risk Intelligence -->
-  <div class="col-12 col-sm-6 col-xl-3">
-    <div class="va-card h-100">
-      <div class="va-card-header">
-        <h3 class="va-card-title">Heat-Risk Index</h3>
-        <span class="badge bg-secondary" id="cardHeatRiskBadge">Normal</span>
+  <!-- Card 2: Humidity -->
+  <div class="col-12 col-md-4">
+    <div class="condition-card h-100">
+      <div class="card-icon-squircle hum-squircle" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
+        </svg>
       </div>
-      <div class="d-flex align-items-baseline">
-        <span class="va-metric-val fs-3" id="cardHeatIndexVal">--.-</span>
-        <span class="va-metric-unit" id="cardHeatIndexUnit">°C</span>
-      </div>
-      <div class="va-metric-subtext">
-        <span id="cardHeatRiskAdvisory" class="text-secondary small">Evaluating thermal comfort...</span>
-      </div>
-      <hr class="my-2 border-secondary border-opacity-25">
-      <div class="d-flex justify-content-between text-secondary small">
-        <span class="text-truncate" id="cardHeatRiskBasis">NOAA / NWS Rothfusz criteria</span>
+      <div class="card-metric-body">
+        <div class="card-metric-label">Humidity</div>
+        <div class="card-metric-value-row">
+          <span class="card-metric-value" id="cardHumidityVal">--.-</span>
+          <span class="card-metric-unit">%</span>
+        </div>
+        <div class="d-flex align-items-center justify-content-between mt-1">
+          <span class="card-metric-status text-success fw-semibold" id="humConditionStatus">Normal</span>
+          <span class="badge bg-info bg-opacity-10 text-cyan small" id="cardHumidityBadge" style="font-size: 11px; color: #0284c7;">DHT11 Hygrometer</span>
+        </div>
+        <div class="d-flex justify-content-between text-muted small mt-2 pt-2 border-top border-light" style="font-size: 11px;">
+          <span>Min: <strong class="text-dark" id="humMin">--</strong></span>
+          <span>Avg: <strong class="text-dark" id="humAvg">--</strong></span>
+          <span>Max: <strong class="text-dark" id="humMax">--</strong></span>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- Card 4: Atmospheric Pressure -->
-  <div class="col-12 col-sm-6 col-xl-3">
-    <div class="va-card h-100">
-      <div class="va-card-header">
-        <h3 class="va-card-title">Atmospheric Pressure</h3>
-        <span class="text-cyan small fw-semibold" id="cardPressBadge">Barometer</span>
+  <!-- Card 3: Heat Index -->
+  <div class="col-12 col-md-4">
+    <div class="condition-card h-100">
+      <div class="card-icon-squircle heat-squircle" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path>
+        </svg>
       </div>
-      <div class="d-flex align-items-baseline">
-        <span class="va-metric-val" id="cardPressVal">----.-</span>
-        <span class="va-metric-unit">hPa</span>
-      </div>
-      <div class="va-metric-subtext">
-        <span class="trend-badge trend-neutral" id="pressTrendBadge">
-          <span>&minus;</span> <span id="pressTrendVal">0.00</span> hPa
-        </span>
-        <span class="text-secondary" id="pressTrendLabel">vs last read</span>
-      </div>
-      <hr class="my-2 border-secondary border-opacity-25">
-      <div class="d-flex justify-content-between text-secondary small">
-        <span>Min: <strong class="text-white" id="pressMin">--</strong></span>
-        <span>Avg: <strong class="text-white" id="pressAvg">--</strong></span>
-        <span>Max: <strong class="text-white" id="pressMax">--</strong></span>
+      <div class="card-metric-body">
+        <div class="card-metric-label">Heat Index</div>
+        <div class="card-metric-value-row">
+          <span class="card-metric-value" id="cardHeatIndexVal">--.-</span>
+          <span class="card-metric-unit" id="cardHeatIndexUnit">°C</span>
+        </div>
+        <div class="d-flex align-items-center justify-content-between mt-1">
+          <span class="card-metric-status fw-semibold" id="heatIndexConditionStatus" style="color: #ea580c;">Normal</span>
+          <span class="badge bg-warning bg-opacity-10 small" id="cardHeatRiskBadge" style="font-size: 11px; color: #ea580c;">Rothfusz</span>
+        </div>
+        <div class="text-truncate text-muted small mt-2 pt-2 border-top border-light" style="font-size: 11px;" id="cardHeatRiskAdvisory">
+          NOAA apparent thermal comfort
+        </div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- Station Status & Hardware Telemetry Row -->
-<div class="row g-3 mb-4">
-  <!-- Status 1: Active Sensor & Source -->
-  <div class="col-12 col-sm-6 col-xl-3">
-    <div class="va-card h-100">
-      <div class="va-card-header">
-        <h3 class="va-card-title">Active Station</h3>
-        <span class="status-pill demo py-1 px-2" id="cardSensorStatusPill">
-          <span class="status-dot"></span>
-          <span id="cardSensorStatusText">Checking</span>
-        </span>
+<!-- Section 3: Dual-Series Line Chart matching Reference Image -->
+<div class="chart-card-sunset mb-4">
+  <div class="chart-card-header d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+    <div>
+      <h3 class="chart-card-title m-0">Temperature &amp; Humidity (Last 24 Hours)</h3>
+      <div class="chart-card-sub" id="combinedChartSummary">Real-time dual-sensor microclimate trends from Turso ingestion pipeline</div>
+    </div>
+    <div class="d-flex align-items-center gap-3 flex-wrap">
+      <!-- Reference Image Custom Legend -->
+      <div class="sunset-chart-legend d-flex align-items-center gap-3" aria-hidden="true">
+        <span class="legend-item"><span class="legend-dot temp-dot"></span> Temperature (°C)</span>
+        <span class="legend-item"><span class="legend-dot hum-dot"></span> Humidity (%)</span>
       </div>
-      <div class="va-metric-val fs-4 text-cyan" id="cardSensorModel">BME280 / BMP280</div>
-      <div class="va-metric-subtext">
-        <span>Bus 1 &bull; <span id="cardSensorAddress">I²C</span></span>
-      </div>
-      <hr class="my-2 border-secondary border-opacity-25">
-      <div class="d-flex justify-content-between text-secondary small">
-        <span>Freshness:</span>
-        <span class="text-white" id="cardDataFreshness">--</span>
-      </div>
-      <div class="d-flex justify-content-between text-secondary small">
-        <span>Last Read:</span>
-        <span class="text-white" id="cardLastReadingTime">--:--:--</span>
+      <!-- Range Selector Pills -->
+      <div class="btn-group-pill" id="tempRangeSelector" role="group" aria-label="Time range selector">
+        <button type="button" data-range="1h">1h</button>
+        <button type="button" data-range="6h">6h</button>
+        <button type="button" data-range="24h" class="active">24h</button>
+        <button type="button" data-range="7d">7d</button>
       </div>
     </div>
   </div>
+  <div class="chart-box-sunset" style="position: relative; height: 320px;">
+    <canvas id="temperatureChart" aria-label="Temperature and relative humidity line chart over time"></canvas>
+  </div>
+</div>
 
-  <!-- Status 2: Dedicated DHT11 Sensor Pipeline -->
+<!-- Section 4: Hardware Pipeline, Station Coordinates & Cloud Persistence -->
+<div class="row g-3 mb-4">
+  <!-- Status 1: Dedicated DHT11 Sensor Pipeline -->
   <div class="col-12 col-sm-6 col-xl-3">
     <div class="va-card h-100">
       <div class="va-card-header">
@@ -146,55 +142,81 @@
       </div>
       <div class="d-flex align-items-baseline justify-content-between mb-1">
         <div>
-          <span class="va-metric-val fs-4 text-cyan" id="dht11TempVal">--.-</span>
+          <span class="va-metric-val fs-4" style="color: #f25c38;" id="dht11TempVal">--.-</span>
           <span class="va-metric-unit">°C</span>
         </div>
         <div>
-          <span class="va-metric-val fs-4 text-success" id="dht11HumVal">--.-</span>
+          <span class="va-metric-val fs-4" style="color: #0284c7;" id="dht11HumVal">--.-</span>
           <span class="va-metric-unit">%</span>
         </div>
       </div>
       <div class="va-metric-subtext d-flex justify-content-between">
         <span>Temp &bull; Humidity</span>
-        <span class="text-truncate text-secondary" id="dht11Source" title="Data Source Attribution">dht11</span>
+        <span class="text-truncate text-muted" id="dht11Source" title="Data Source Attribution">dht11</span>
       </div>
-      <hr class="my-2 border-secondary border-opacity-25">
-      <div class="d-flex justify-content-between text-secondary small">
+      <hr class="my-2 border-light">
+      <div class="d-flex justify-content-between text-muted small">
         <span>Pipeline:</span>
-        <span class="text-white text-truncate">Arduino Mega &rarr; RPi 3 B+</span>
+        <span class="text-dark fw-semibold text-truncate">Arduino Mega &rarr; RPi 3B+</span>
       </div>
-      <div class="d-flex justify-content-between text-secondary small">
+      <div class="d-flex justify-content-between text-muted small">
         <span>Last Ingested:</span>
-        <span class="text-white text-truncate" id="dht11LastUpdated">--:--:--</span>
+        <span class="text-dark fw-semibold text-truncate" id="dht11LastUpdated">--:--:--</span>
       </div>
     </div>
   </div>
 
-  <!-- Status 3: Hyperlocal GPS Station -->
+  <!-- Status 2: Active Station & Sensor Model -->
   <div class="col-12 col-sm-6 col-xl-3">
     <div class="va-card h-100">
       <div class="va-card-header">
-        <h3 class="va-card-title">Station Coordinates</h3>
-        <span class="badge bg-secondary" id="cardGpsStatus">u-blox NEO-6M</span>
+        <h3 class="va-card-title">Active Station</h3>
+        <span class="status-pill demo py-1 px-2" id="cardSensorStatusPill">
+          <span class="status-dot"></span>
+          <span id="cardSensorStatusText">Checking</span>
+        </span>
       </div>
-      <div class="va-metric-val fs-6 text-white text-truncate" id="cardGpsCoords">Station Location Awaiting Fix</div>
+      <div class="va-metric-val fs-4" style="color: #ea580c;" id="cardSensorModel">DHT11 / BMP280</div>
       <div class="va-metric-subtext">
-        <span class="text-secondary" id="cardGpsMeta">Hyperlocal Weather Station</span>
+        <span>Bus 1 &bull; <span id="cardSensorAddress">USB Serial / I²C</span></span>
       </div>
-      <hr class="my-2 border-secondary border-opacity-25">
-      <div class="d-flex justify-content-between text-secondary small">
-        <span>Latitude: <strong class="text-white" id="statLat">--</strong></span>
-        <span>Longitude: <strong class="text-white" id="statLon">--</strong></span>
+      <hr class="my-2 border-light">
+      <div class="d-flex justify-content-between text-muted small">
+        <span>Freshness:</span>
+        <span class="text-dark fw-semibold" id="cardDataFreshness">--</span>
+      </div>
+      <div class="d-flex justify-content-between text-muted small">
+        <span>Last Read:</span>
+        <span class="text-dark fw-semibold" id="cardLastReadingTime">--:--:--</span>
       </div>
     </div>
   </div>
 
-  <!-- Status 4: Database & Telemetry Records -->
+  <!-- Status 3: Station Coordinates -->
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="va-card h-100">
+      <div class="va-card-header">
+        <h3 class="va-card-title">Coordinates</h3>
+        <span class="badge bg-secondary text-white" id="cardGpsStatus" style="font-size: 11px;">Fixed Station</span>
+      </div>
+      <div class="va-metric-val fs-6 text-dark text-truncate" id="cardGpsCoords">Station Location Ready</div>
+      <div class="va-metric-subtext">
+        <span class="text-muted" id="cardGpsMeta">Hyperlocal Weather Station</span>
+      </div>
+      <hr class="my-2 border-light">
+      <div class="d-flex justify-content-between text-muted small">
+        <span>Latitude: <strong class="text-dark" id="statLat">--</strong></span>
+        <span>Longitude: <strong class="text-dark" id="statLon">--</strong></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Status 4: Database Storage & Turso Persistence -->
   <div class="col-12 col-sm-6 col-xl-3">
     <div class="va-card h-100">
       <div class="va-card-header">
         <h3 class="va-card-title">Today's Records</h3>
-        <span class="badge bg-primary bg-opacity-25 text-info" id="cardRecordMode">Active</span>
+        <span class="badge bg-warning bg-opacity-25 text-warning" id="cardRecordMode" style="font-size: 11px; color: #ea580c;">Active</span>
       </div>
       <div class="d-flex align-items-baseline">
         <span class="va-metric-val" id="cardTodayCount">0</span>
@@ -202,85 +224,52 @@
       </div>
       <div class="va-metric-subtext">
         <span class="text-success">&bull;</span>
-        <span id="cardCollectionStatus">Database logging active</span>
+        <span id="cardCollectionStatus">Database persistence active</span>
       </div>
-      <hr class="my-2 border-secondary border-opacity-25">
-      <div class="d-flex justify-content-between text-secondary small">
+      <hr class="my-2 border-light">
+      <div class="d-flex justify-content-between text-muted small">
         <span>Storage:</span>
-        <span class="text-white" id="cardStorageStatus">SQLite WAL</span>
+        <span class="fw-semibold text-truncate" id="cardStorageStatus">SQLite / Turso</span>
       </div>
-      <div class="d-flex justify-content-between text-secondary small">
+      <div class="d-flex justify-content-between text-muted small">
         <span>Last Stored:</span>
-        <span class="text-white" id="cardLastCollectionTime">--:--:--</span>
+        <span class="text-dark fw-semibold" id="cardLastCollectionTime">--:--:--</span>
       </div>
     </div>
   </div>
 </div>
 
-<!-- Charts Section: Row 1 (Temperature & Humidity) -->
+<!-- Section 5: Barometric Pressure Trend & Temperature Alert Controls -->
 <div class="row g-3 mb-4">
-  <!-- Temperature Line Chart -->
-  <div class="col-12 col-lg-6">
-    <div class="va-card">
-      <div class="chart-header">
-        <div>
-          <h2 class="va-card-title m-0">Temperature Trend (°C)</h2>
-          <small class="text-secondary" id="tempChartSummary">Loading historical data...</small>
-        </div>
-        <div class="btn-group-pill" id="tempRangeSelector">
-          <button type="button" data-range="1h">1h</button>
-          <button type="button" data-range="6h">6h</button>
-          <button type="button" data-range="24h" class="active">24h</button>
-          <button type="button" data-range="7d">7d</button>
-        </div>
-      </div>
-      <div class="chart-box">
-        <canvas id="temperatureChart"></canvas>
-      </div>
-    </div>
-  </div>
-
-  <!-- Relative Humidity Line Chart -->
-  <div class="col-12 col-lg-6">
-    <div class="va-card">
-      <div class="chart-header">
-        <div>
-          <h2 class="va-card-title m-0">Relative Humidity Trend (%)</h2>
-          <small class="text-secondary" id="humChartSummary">Loading hygrometer data...</small>
-        </div>
-        <div class="btn-group-pill" id="humRangeSelector">
-          <button type="button" data-range="1h">1h</button>
-          <button type="button" data-range="6h">6h</button>
-          <button type="button" data-range="24h" class="active">24h</button>
-          <button type="button" data-range="7d">7d</button>
-        </div>
-      </div>
-      <div class="chart-box">
-        <canvas id="humidityChart"></canvas>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Charts Section: Row 2 (Barometric Pressure & Safety Controls) -->
-<div class="row g-3 mb-4">
-  <!-- Pressure Line Chart -->
+  <!-- Barometric Pressure Chart -->
   <div class="col-12 col-lg-6">
     <div class="va-card h-100">
-      <div class="chart-header">
+      <div class="va-card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
         <div>
-          <h2 class="va-card-title m-0">Atmospheric Pressure Trend (hPa)</h2>
-          <small class="text-secondary" id="pressChartSummary">Loading barometric data...</small>
+          <h3 class="va-card-title m-0">Atmospheric Pressure Trend (hPa)</h3>
+          <small class="text-muted" id="pressChartSummary">BMP280 Barometer Trend</small>
         </div>
-        <div class="btn-group-pill" id="pressRangeSelector">
+        <div class="btn-group-pill" id="pressRangeSelector" role="group" aria-label="Pressure range">
           <button type="button" data-range="1h">1h</button>
           <button type="button" data-range="6h">6h</button>
           <button type="button" data-range="24h" class="active">24h</button>
           <button type="button" data-range="7d">7d</button>
         </div>
       </div>
-      <div class="chart-box">
-        <canvas id="pressureChart"></canvas>
+      <div class="d-flex align-items-baseline my-2">
+        <span class="va-metric-val" id="cardPressVal">----.-</span>
+        <span class="va-metric-unit">hPa</span>
+        <span class="trend-badge trend-neutral ms-3" id="pressTrendBadge">
+          <span>&minus;</span> <span id="pressTrendVal">0.00</span> hPa
+        </span>
+      </div>
+      <div style="position: relative; height: 200px;">
+        <canvas id="pressureChart" aria-label="Barometric pressure trend line chart"></canvas>
+      </div>
+      <div class="d-flex justify-content-between text-muted small mt-2 pt-2 border-top border-light">
+        <span>Min: <strong class="text-dark" id="pressMin">--</strong></span>
+        <span>Avg: <strong class="text-dark" id="pressAvg">--</strong></span>
+        <span>Max: <strong class="text-dark" id="pressMax">--</strong></span>
       </div>
     </div>
   </div>
@@ -290,48 +279,48 @@
     <div class="va-card h-100">
       <div class="va-card-header">
         <h3 class="va-card-title">Temperature Alert &amp; Heat Risk Configuration</h3>
-        <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25">Safety Threshold</span>
+        <span class="badge bg-warning bg-opacity-10 border border-warning" style="color: #ea580c;">Safety Threshold</span>
       </div>
-      <p class="text-secondary small">
-        Configure the high-temperature trigger threshold. If ambient readings reach or exceed this value, a prominent visual warning and database event are generated.
+      <p class="text-muted small">
+        Configure the high-temperature warning threshold. If ambient readings reach or exceed this value, a prominent visual warning and database event are logged with hysteresis clearing.
       </p>
       <form id="formThresholdConfig" class="d-flex align-items-center gap-2 mt-3">
         <div class="input-group">
-          <span class="input-group-text bg-secondary text-secondary border-secondary">Threshold</span>
-          <input type="number" step="0.5" min="0" max="70" class="form-control va-input" id="inputThreshold" value="35.0" required>
-          <span class="input-group-text bg-secondary text-white border-secondary">°C</span>
+          <span class="input-group-text bg-light text-muted border-light">Threshold</span>
+          <input type="number" step="0.5" min="0" max="70" class="form-control va-input" id="inputThreshold" value="35.0" required aria-label="Temperature threshold in Celsius">
+          <span class="input-group-text bg-light text-dark border-light">°C</span>
         </div>
         <button type="submit" class="va-btn va-btn-primary flex-shrink-0" id="btnSaveThreshold">Save</button>
       </form>
-      <div id="thresholdFeedback" class="small mt-2"></div>
+      <div id="thresholdFeedback" class="small mt-2" role="status"></div>
 
-      <div class="row g-2 mt-3 pt-2 border-top border-secondary border-opacity-25">
+      <div class="row g-2 mt-3 pt-2 border-top border-light">
         <div class="col-6">
-          <div class="p-2 rounded bg-secondary bg-opacity-25 border border-secondary border-opacity-25 small">
+          <div class="p-2 rounded bg-light border border-light small">
             <span class="text-muted d-block text-uppercase" style="font-size: 10px;">Thermal Spread</span>
-            <strong class="text-white fs-6" id="summaryThermalAmplitude">-- °C</strong>
+            <strong class="text-dark fs-6" id="summaryThermalAmplitude">-- °C</strong>
           </div>
         </div>
         <div class="col-6">
-          <div class="p-2 rounded bg-secondary bg-opacity-25 border border-secondary border-opacity-25 small">
+          <div class="p-2 rounded bg-light border border-light small">
             <span class="text-muted d-block text-uppercase" style="font-size: 10px;">Barometric Delta</span>
-            <strong class="text-white fs-6" id="summaryBaroDelta">-- hPa</strong>
+            <strong class="text-dark fs-6" id="summaryBaroDelta">-- hPa</strong>
           </div>
         </div>
       </div>
       <div class="text-muted small mt-2">
-        <em>Heat Index calculated via NOAA/NWS Rothfusz regression equation when T &ge; 26.7°C and RH &ge; 40%.</em>
+        <em>Calculated Heat Index derived via NOAA Rothfusz formula to distinguish apparent thermal stress from physical sensor temperature.</em>
       </div>
     </div>
   </div>
 </div>
 
-<!-- Recent Readings Table Section -->
+<!-- Section 6: Recent Sensor Telemetry Table Section -->
 <div class="va-card">
   <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
     <div>
-      <h2 class="va-card-title m-0">Recent Sensor Telemetry</h2>
-      <small class="text-secondary">Direct readings logged to the local SQLite database</small>
+      <h3 class="va-card-title m-0">Recent Sensor Telemetry</h3>
+      <small class="text-muted">Real readings logged via Turso and SQLite ingestion pipeline</small>
     </div>
     <div class="d-flex gap-2">
       <a href="{{ url_for('api_readings_export_csv', range='24h') }}" class="va-btn va-btn-secondary va-btn-sm" id="btnExportCSV">
@@ -352,18 +341,18 @@
     <table class="va-table" id="tableRecentReadings">
       <thead>
         <tr>
-          <th>Timestamp (Local)</th>
-          <th>Temperature</th>
-          <th>Humidity</th>
-          <th>Pressure</th>
-          <th>Heat Index</th>
-          <th>Source</th>
-          <th>Validity</th>
+          <th scope="col">Timestamp (Local)</th>
+          <th scope="col">Temperature</th>
+          <th scope="col">Humidity</th>
+          <th scope="col">Pressure</th>
+          <th scope="col">Heat Index</th>
+          <th scope="col">Source</th>
+          <th scope="col">Validity</th>
         </tr>
       </thead>
       <tbody id="recentReadingsTbody">
         <tr>
-          <td colspan="7" class="text-center py-4 text-secondary">
+          <td colspan="7" class="text-center py-4 text-muted">
             <div class="spinner-glow mx-auto mb-2"></div>
             Loading recent measurements...
           </td>
@@ -375,5 +364,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+<script src="{{ url_for('static', filename='js/dashboard.js', v=ASSET_VERSION) }}"></script>
 {% endblock %}

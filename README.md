@@ -58,7 +58,7 @@ Standard consumer weather applications rely on airport radar stations tens of ki
                                    v
 +-------------------------------------------------------------------+
 | VA Dashboard UI                                                   |
-| (Responsive Dark Interface, Chart.js Visualizations, Mobile Nav)  |
+| (Sunset Warm Design System, Chart.js Dual-Series, Mobile Drawer)  |
 +-------------------------------------------------------------------+
 ```
 
@@ -258,16 +258,21 @@ To achieve permanent, durable storage across container lifecycles on Vercel:
 
 ---
 
-## 11. Branding, Favicons & Loading Experience
+## 11. Sunset Warm Design System, Branding & Accessibility
 
-### Visual Identity & Source Asset
-- **Source Logo:** [`logo.jpg`](logo.jpg) (1080×1080 square) serves as the primary visual identity.
-- **Color Palette:**
-  - Dark Navy Background: `#07111F`
-  - Primary Cyan Accent: `#51D8FF`
-  - Secondary Blue: `#1677FF`
-  - Clean White Typography: `#FFFFFF`
-  - Subdued Metallic Slate: `#91A9BF` / `#243B50`
+### Visual Identity & Theme
+- **Selected Theme:** **Sunset Warm** — an atmospheric, earthy palette featuring panoramic sunset gradients, warm cream backgrounds, terracotta accents, and soft squircle telemetry cards.
+- **Color Palette & Accessibility Ratios:**
+  - Base Background: `#FAF5EE` (Warm Cream)
+  - Card Surfaces: `#FFFFFF` (Crisp White) with `#F2DECB` borders
+  - Active Navigation Pill: `#F25C38` (Vibrant Terracotta)
+  - Primary Typography: `#1F1412` (**16.2:1** WCAG AAA contrast ratio on white)
+  - Secondary Typography: `#5A463E` (**7.2:1** WCAG AA contrast ratio on white)
+  - Temperature Accent: `#E05438` (Coral Warm)
+  - Relative Humidity Accent: `#0284C7` (Sky Cyan)
+  - Heat Index Accent: `#D97706` (Warm Amber)
+- **Keyboard Navigation & Accessibility:** 3px focus rings (`outline: 3px solid #f25c38`), skip navigation link (`.skip-link`), ARIA live regions (`#vaAnnouncer`), and persistent theme state stored in `localStorage`.
+- **Source Logo:** [`logo.jpg`](logo.jpg) (1080×1080 square) preserved as primary visual identity.
 
 ### Generated Favicon & App Icon Suite
 All icons are generated via [`scripts/generate_favicons.py`](scripts/generate_favicons.py):
@@ -364,13 +369,16 @@ Access from any phone or computer on the same Wi-Fi network at `http://<RPI_IP>:
 
 ## 13. Running Automated Tests
 
-Run the complete 76-test automated verification suite:
+Run the complete 83-test automated verification suite:
 
 ```bash
 pytest -v
 ```
 
-All 76 unit and integration tests verify:
+All 83 unit and integration tests verify:
+- **Sunset Warm Design System & Accessibility:** Theme class presence, WCAG-compliant styling, skip navigation links, ARIA live region status, and theme persistence in `localStorage`.
+- **Honest Data & Freshness Engine:** Production mode exclusion of simulated/demo records, honest "Sensor Offline" state when no readings exist, and honest "Sensor Stale" (>180s) alerts with last update timestamps.
+- **Turso libSQL v2 Pipeline Client:** Zero-dependency libSQL pipeline formatting, argument type serialization (null, integer, float, text, blob), and resilient HTTP response parsing.
 - **Dedicated DHT11 Ingestion (`POST /api/ingest/dht11`):** Bearer token authentication, production fail-closed policy when unconfigured, rejection of non-numeric, `NaN`, and `Infinity` payloads, physical range validation (-20°C to 60°C, 0% to 100% RH), ISO 8601 timestamp validation, and serial bridge regex and CSV parser testing.
 - **Sensor Coexistence:** Seamless integration of BMP280 records (`pressure_hpa` present, `humidity_pct` null) and DHT11 records (`humidity_pct` present, `pressure_hpa` null) without database schema errors or frontend JavaScript `null.toFixed()` exceptions.
 - **NOAA / NWS Heat Index Algorithm:** Formula accuracy, 80°F (26.7°C) and 40% RH applicability gates, category assignments, and refusal to calculate from temperature alone.
@@ -447,3 +455,4 @@ Pre-configured with [`vercel.json`](vercel.json) and [`api/index.py`](api/index.
 - By default without cloud credentials, SQLite storage operates in `/tmp/virtual_atmosphere.db` (`storage_backend="sqlite_ephemeral"`, `is_persistent=False`).
 - To make storage permanent across Vercel cold starts, configure `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` in the Vercel Project Settings > Environment Variables.
 - Ingestion endpoints seamlessly update the cloud database and status is reflected in the dashboard telemetry header.
+- For complete step-by-step production instructions, refer to the [Virtual Atmosphere Deployment Guide](docs/DEPLOYMENT.md).

@@ -16,9 +16,13 @@
         const sensor = data.sensor || {};
         const alertInfo = data.alert || {};
 
-        if (latest) {
+        const freshness = data.freshness || {};
+        const isLive = freshness.is_live === true;
+        const isStale = freshness.is_stale === true;
+
+        if (latest && !isStale) {
           document.getElementById("liveTempVal").textContent = latest.temperature_c.toFixed(1);
-          document.getElementById("livePressVal").textContent = latest.pressure_hpa.toFixed(1);
+          document.getElementById("livePressVal").textContent = (latest.pressure_hpa !== null && latest.pressure_hpa !== undefined) ? latest.pressure_hpa.toFixed(1) : "----.-";
 
           // Threshold info
           if (alertInfo.threshold_c) {
@@ -39,7 +43,7 @@
           const pressStatusText = document.getElementById("livePressStatusText");
           if (latest.pressure_hpa > 1020) {
             pressStatusText.textContent = "High Pressure (Anticyclone)";
-          } else if (latest.pressure_hpa < 1005) {
+          } else if (latest.pressure_hpa && latest.pressure_hpa < 1005) {
             pressStatusText.textContent = "Low Pressure (Cyclone/Depression)";
           } else {
             pressStatusText.textContent = "Nominal Barometric Range";
@@ -53,7 +57,22 @@
             }
             renderStreamTable();
           }
+        } else if (latest && isStale) {
+          document.getElementById("liveTempVal").textContent = `${latest.temperature_c.toFixed(1)} (Stale)`;
+          document.getElementById("livePressVal").textContent = (latest.pressure_hpa !== null && latest.pressure_hpa !== undefined) ? `${latest.pressure_hpa.toFixed(1)} (Stale)` : "----.-";
+          const tempStatus = document.getElementById("liveTempStatus");
+          const tempStatusText = document.getElementById("liveTempStatusText");
+          if (tempStatus) tempStatus.className = "status-pill offline";
+          if (tempStatusText) tempStatusText.textContent = "Sensor Offline (Stale Reading)";
+        } else {
+          document.getElementById("liveTempVal").textContent = "--.-";
+          document.getElementById("livePressVal").textContent = "----.-";
+          const tempStatus = document.getElementById("liveTempStatus");
+          const tempStatusText = document.getElementById("liveTempStatusText");
+          if (tempStatus) tempStatus.className = "status-pill offline";
+          if (tempStatusText) tempStatusText.textContent = "No Live Reading";
         }
+
 
         // Diagnostics
         const diagPill = document.getElementById("diagSensorPill");

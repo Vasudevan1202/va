@@ -275,8 +275,26 @@
     }
   }
 
+  // Theme Management (Selected Theme: Sunset Warm)
+  function initTheme() {
+    const savedTheme = localStorage.getItem("va_theme") || "sunset-warm";
+    document.documentElement.setAttribute("data-theme", savedTheme);
+
+    const themeBtn = document.getElementById("btnThemeToggle");
+    if (themeBtn) {
+      themeBtn.addEventListener("click", function () {
+        localStorage.setItem("va_theme", "sunset-warm");
+        document.documentElement.setAttribute("data-theme", "sunset-warm");
+        window.VA.announce("Theme set to Sunset Warm (Selected Theme)");
+        themeBtn.setAttribute("title", "Theme: Sunset Warm (Active & Saved)");
+        themeBtn.classList.add("active");
+      });
+    }
+  }
+
   // Initialize on DOM load
   document.addEventListener("DOMContentLoaded", function () {
+    initTheme();
     updateClock();
     setInterval(updateClock, 1000);
     setupMobileNavigation();
@@ -287,6 +305,7 @@
     // Safety fallback: ensure initial loader is never permanently covering the application
     setTimeout(function () {
       window.VA.hideAppLoader("System ready");
-    }, 2200);
+    }, 1800);
   });
 })();
+
