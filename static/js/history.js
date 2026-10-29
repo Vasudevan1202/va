@@ -24,24 +24,48 @@
           {
             label: "Temperature (°C)",
             data: [],
-            borderColor: "#ef4444",
-            backgroundColor: "rgba(239, 68, 68, 0.1)",
-            borderWidth: 2,
-            yAxisID: "yTemp",
-            tension: 0.3,
+            borderColor: "#dc2626",
+            backgroundColor: "rgba(220, 38, 38, 0.10)",
+            borderWidth: 2.8,
+            tension: 0.35,
             fill: false,
-            pointRadius: 2
+            pointRadius: 3,
+            pointHoverRadius: 6,
+            pointBackgroundColor: "#dc2626",
+            pointBorderColor: "#ffffff",
+            pointBorderWidth: 1.5,
+            yAxisID: "yTemp"
           },
           {
-            label: "Pressure (hPa)",
+            label: "Relative Humidity (%)",
+            data: [],
+            borderColor: "#0284c7",
+            backgroundColor: "rgba(2, 132, 199, 0.08)",
+            borderWidth: 2.8,
+            tension: 0.35,
+            fill: false,
+            pointRadius: 3,
+            pointHoverRadius: 6,
+            pointBackgroundColor: "#0284c7",
+            pointBorderColor: "#ffffff",
+            pointBorderWidth: 1.5,
+            yAxisID: "yHum"
+          },
+          {
+            label: "Heat Index (°C)",
             data: [],
             borderColor: "#ea580c",
-            backgroundColor: "rgba(234, 88, 12, 0.1)",
+            backgroundColor: "rgba(234, 88, 12, 0.05)",
             borderWidth: 2,
-            yAxisID: "yPress",
-            tension: 0.3,
+            borderDash: [5, 4],
+            tension: 0.35,
             fill: false,
-            pointRadius: 2
+            pointRadius: 2.5,
+            pointHoverRadius: 5,
+            pointBackgroundColor: "#ea580c",
+            pointBorderColor: "#ffffff",
+            pointBorderWidth: 1.2,
+            yAxisID: "yTemp"
           }
         ]
       },
@@ -49,38 +73,98 @@
         responsive: true,
         maintainAspectRatio: false,
         interaction: { mode: "index", intersect: false },
+        layout: {
+          padding: { top: 10, right: 14, bottom: 6, left: 6 }
+        },
         plugins: {
           legend: {
             display: true,
-            labels: { color: "#1f1412", font: { size: 12, family: "'Inter', sans-serif", weight: "600" } }
+            position: "top",
+            labels: {
+              color: "#1f1412",
+              padding: 16,
+              usePointStyle: true,
+              font: { size: 13, family: "'Inter', sans-serif", weight: "700" }
+            }
           },
           tooltip: {
-            backgroundColor: "rgba(255, 255, 255, 0.96)",
+            backgroundColor: "rgba(255, 255, 255, 0.98)",
             titleColor: "#1f1412",
             bodyColor: "#5a463e",
-            borderColor: "rgba(230, 210, 195, 0.9)",
-            borderWidth: 1,
-            padding: 10
+            borderColor: "rgba(230, 210, 195, 0.95)",
+            borderWidth: 1.5,
+            padding: 12,
+            boxPadding: 6,
+            usePointStyle: true,
+            titleFont: { size: 13, weight: "700", family: "'Inter', sans-serif" },
+            bodyFont: { size: 13, weight: "600", family: "'Inter', sans-serif" },
+            callbacks: {
+              title: function (items) {
+                return items.length ? "Timestamp: " + items[0].label : "";
+              },
+              label: function (ctx) {
+                if (ctx.parsed.y === null || ctx.parsed.y === undefined) {
+                  return `${ctx.dataset.label}: --`;
+                }
+                if (ctx.dataset.label.startsWith("Relative Humidity")) {
+                  return `Relative Humidity: ${ctx.parsed.y.toFixed(1)}%`;
+                }
+                return `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)} °C`;
+              }
+            }
           }
         },
         scales: {
           x: {
-            grid: { color: "rgba(225, 200, 180, 0.3)" },
-            ticks: { color: "#736259", maxTicksLimit: 10 }
+            title: {
+              display: true,
+              text: "Time",
+              color: "#5a463e",
+              font: { size: 13, weight: "700", family: "'Inter', sans-serif" },
+              padding: { top: 6 }
+            },
+            grid: { color: "rgba(225, 200, 180, 0.35)" },
+            ticks: {
+              color: "#5a463e",
+              maxTicksLimit: 10,
+              font: { size: 12, weight: "600", family: "'Inter', sans-serif" }
+            }
           },
           yTemp: {
             type: "linear",
             position: "left",
-            title: { display: true, text: "Temperature (°C)", color: "#ef4444" },
-            grid: { color: "rgba(225, 200, 180, 0.3)" },
-            ticks: { color: "#ef4444" }
+            title: {
+              display: true,
+              text: "Temperature & Heat Index (°C)",
+              color: "#dc2626",
+              font: { size: 13, weight: "700", family: "'Inter', sans-serif" }
+            },
+            grid: { color: "rgba(225, 200, 180, 0.35)" },
+            ticks: {
+              color: "#dc2626",
+              font: { size: 12, weight: "600", family: "'Inter', sans-serif" },
+              callback: function (val) { return val + " °C"; }
+            },
+            suggestedMin: 15,
+            suggestedMax: 45
           },
-          yPress: {
+          yHum: {
             type: "linear",
             position: "right",
-            title: { display: true, text: "Pressure (hPa)", color: "#ea580c" },
+            title: {
+              display: true,
+              text: "Relative Humidity (%)",
+              color: "#0284c7",
+              font: { size: 13, weight: "700", family: "'Inter', sans-serif" }
+            },
             grid: { drawOnChartArea: false },
-            ticks: { color: "#ea580c" }
+            ticks: {
+              color: "#0284c7",
+              font: { size: 12, weight: "600", family: "'Inter', sans-serif" },
+              callback: function (val) { return val + "%"; }
+            },
+            min: 0,
+            max: 100
           }
         }
       }
@@ -91,6 +175,7 @@
   function loadChartData() {
     let url = `/api/readings?range=${currentRangePreset}`;
     const presetGroup = document.getElementById("historyPresetGroup");
+    const emptyOverlay = document.getElementById("historyChartEmptyOverlay");
     if (presetGroup) {
       presetGroup.querySelectorAll("button").forEach(b => b.disabled = true);
     }
@@ -104,6 +189,12 @@
         const readings = data.readings || [];
         const summary = data.summary || {};
 
+        if (readings.length === 0) {
+          if (emptyOverlay) emptyOverlay.style.display = "flex";
+        } else {
+          if (emptyOverlay) emptyOverlay.style.display = "none";
+        }
+
         const labels = readings.map(r => {
           const d = new Date(r.timestamp);
           return d.toLocaleDateString([], { month: "numeric", day: "numeric" }) + " " +
@@ -111,35 +202,60 @@
         });
 
         const temps = readings.map(r => r.temperature_c);
-        const pressures = readings.map(r => r.pressure_hpa);
+        const hums = readings.map(r => r.humidity_pct);
+        const heatIdx = readings.map(r => r.heat_index_c);
 
         if (historyChart) {
           historyChart.data.labels = labels;
           historyChart.data.datasets[0].data = temps;
-          historyChart.data.datasets[1].data = pressures;
+          historyChart.data.datasets[1].data = hums;
+          historyChart.data.datasets[2].data = heatIdx;
           historyChart.update();
         }
 
         // Update statistics cards
-        document.getElementById("statSampleCount").textContent = summary.count || 0;
-        if (summary.temp_min !== null && summary.temp_max !== null) {
-          document.getElementById("statTempRange").textContent = `${summary.temp_min}° / ${summary.temp_max}°`;
-          document.getElementById("statTempAvg").textContent = `Avg: ${summary.temp_avg}°C`;
-        } else {
-          document.getElementById("statTempRange").textContent = "-- / --";
-          document.getElementById("statTempAvg").textContent = "Avg: --";
+        const sampleCountElem = document.getElementById("statSampleCount");
+        if (sampleCountElem) sampleCountElem.textContent = summary.count || 0;
+
+        const statTempRange = document.getElementById("statTempRange");
+        const statTempAvg = document.getElementById("statTempAvg");
+        if (statTempRange && statTempAvg) {
+          if (summary.temp_min !== null && summary.temp_max !== null) {
+            statTempRange.textContent = `${summary.temp_min}° / ${summary.temp_max}°C`;
+            statTempAvg.textContent = `Avg: ${summary.temp_avg}°C`;
+          } else {
+            statTempRange.textContent = "-- / -- °C";
+            statTempAvg.textContent = "Avg: --";
+          }
         }
 
-        if (summary.press_min !== null && summary.press_max !== null) {
-          document.getElementById("statPressRange").textContent = `${summary.press_min} / ${summary.press_max}`;
-          document.getElementById("statPressAvg").textContent = `Avg: ${summary.press_avg} hPa`;
-        } else {
-          document.getElementById("statPressRange").textContent = "-- / --";
-          document.getElementById("statPressAvg").textContent = "Avg: --";
+        const statHumRange = document.getElementById("statHumRange");
+        const statHumAvg = document.getElementById("statHumAvg");
+        if (statHumRange && statHumAvg) {
+          if (summary.hum_min !== null && summary.hum_max !== null) {
+            statHumRange.textContent = `${summary.hum_min}% / ${summary.hum_max}%`;
+            statHumAvg.textContent = `Avg: ${summary.hum_avg}%`;
+          } else {
+            statHumRange.textContent = "-- / -- %";
+            statHumAvg.textContent = "Avg: --";
+          }
+        }
+
+        const statPressRange = document.getElementById("statPressRange");
+        const statPressAvg = document.getElementById("statPressAvg");
+        if (statPressRange && statPressAvg) {
+          if (summary.press_min !== null && summary.press_max !== null) {
+            statPressRange.textContent = `${summary.press_min} / ${summary.press_max} hPa`;
+            statPressAvg.textContent = `Avg: ${summary.press_avg} hPa`;
+          } else {
+            statPressRange.textContent = "-- / -- hPa";
+            statPressAvg.textContent = "Avg: --";
+          }
         }
       })
       .catch(err => {
         console.error("Error loading historical chart:", err);
+        if (emptyOverlay) emptyOverlay.style.display = "flex";
       })
       .finally(() => {
         if (presetGroup) {

@@ -238,3 +238,87 @@ def test_turso_pipeline_execution_mock():
                 assert req.full_url == "https://va-mock.turso.io/v2/pipeline"
                 assert req.headers["Authorization"] == "Bearer mock-auth-token"
                 assert req.headers["Content-type"] == "application/json"
+
+
+def test_turso_active_resolution_with_config_database_path():
+    """Verify is_turso_active returns True for both None and Config.DATABASE_PATH."""
+    with patch("config.Config.TURSO_DATABASE_URL", "libsql://va-mock.turso.io"):
+        with patch("config.Config.TURSO_AUTH_TOKEN", "mock-auth-token"):
+            assert database.is_turso_active(None) is True
+            assert database.is_turso_active(Config.DATABASE_PATH) is True
+            # Explicit non-default path (e.g., test fixture SQLite db) returns False to avoid contaminating remote
+            assert database.is_turso_active("custom/local/test.db") is False
+
+
+def test_serverless_dht11_discovery_on_cold_start(test_client):
+    """Verify that a cold container discovers DHT11 readings from database."""
+    client, db_file = test_client
+    from sensor_service import SensorService
+
+    # Insert a real DHT11 reading
+    recent_ts = datetime.now(timezone.utc).isoformat()
+    database.insert_reading(
+        temperature_c=29.2,
+        humidity_pct=64.0,
+        source="raspberry_pi_dht11",
+        sensor_type="dht11",
+        timestamp=recent_ts,
+        db_path=db_file
+    )
+
+    # Initialize a new SensorService with no in-memory cache (simulating serverless cold start)
+    service = SensorService(mode="live")
+    status = service.get_status(db_path=db_file)
+
+    assert status["dht11"]["active"] is True
+    assert status["dht11"]["latest"] is not None
+    assert status["dht11"]["latest"]["temperature_c"] == 29.2
+    assert status["dht11"]["latest"]["humidity_percent"] == 64.0
+    assert status["data_source"] == "hardware"
+    assert status["mode"] == "live"
+
+
+def test_chart_empty_overlays_and_loader_elements(test_client):
+    """Verify empty chart overlays and sunset loader exist in rendered pages."""
+    client, _ = test_client
+
+    # Dashboard has empty overlay and dual-axis canvas
+    res_dash = client.get("/dashboard")
+    assert res_dash.status_code == 200
+    html_dash = res_dash.get_data(as_text=True)
+    assert 'id="tempChartEmptyOverlay"' in html_dash
+    assert "No readings available yet" in html_dash
+    assert 'id="temperatureChart"' in html_dash
+
+    # History page has empty overlay and trajectory chart
+    res_hist = client.get("/history")
+    assert res_hist.status_code == 200
+    html_hist = res_hist.get_data(as_text=True)
+    assert 'id="historyChartEmptyOverlay"' in html_hist
+    assert "No readings available yet" in html_hist
+    assert 'id="historyChart"' in html_hist
+
+    # Base loading screen has atmospheric orbit indicator and brand message
+    assert 'id="vaAppLoader"' in html_dash
+    assert "loader-orbit" in html_dash
+    assert "Connecting to environmental sensors..." in html_dash
+
+
+def test_navigation_excludes_project_and_team_details(test_client):
+    """Verify sidebar navigation strictly contains environmental monitoring links."""
+    client, _ = test_client
+    res = client.get("/dashboard")
+    html = res.get_data(as_text=True)
+
+    # Required links
+    assert 'href="/dashboard"' in html
+    assert 'href="/live"' in html
+    assert 'href="/history"' in html
+    assert 'href="/alerts"' in html
+    assert 'href="/system"' in html
+
+    # Excluded legacy links
+    assert 'href="/about"' not in html
+    assert 'href="/project"' not in html
+    assert "Meet the Team" not in html
+    assert "Project Details" not in html

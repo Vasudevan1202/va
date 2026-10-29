@@ -429,15 +429,51 @@ class SensorService:
                     break
                 time.sleep(0.5)
 
-    def get_status(self) -> Dict[str, Any]:
+    def get_status(self, db_path: Optional[str] = None) -> Dict[str, Any]:
         """Returns the current sensor and backend diagnostic status."""
+        active_db = db_path or self.db_path
         with self.lock:
-            # Calculate data freshness in seconds
+            # Calculate DHT11 freshness
+            # In serverless environments, worker memory is isolated; fetch latest real reading from DB if cache is empty
+            last_dht11_reading = self.last_dht11_reading
+            last_dht11_time = self.last_dht11_time
+            if not last_dht11_reading:
+                try:
+                    db_dht = database.get_latest_dht11_reading(db_path=active_db, real_only=(self.mode == "live"))
+                    if db_dht:
+                        dht_dict = dict(db_dht)
+                        hum_val = dht_dict.get("humidity_percent", dht_dict.get("humidity_pct"))
+                        dht_dict["humidity_percent"] = hum_val
+                        dht_dict["humidity_pct"] = hum_val
+                        last_dht11_reading = dht_dict
+                        last_dht11_time = dht_dict.get("timestamp")
+                        self.last_dht11_reading = dht_dict
+                        self.last_dht11_time = last_dht11_time
+                except Exception as e:
+                    logger.debug(f"Could not load latest DHT11 from database: {e}")
+
+            dht11_freshness = None
+            if last_dht11_time:
+                try:
+                    dht_dt = datetime.fromisoformat(last_dht11_time.replace("Z", "+00:00"))
+                    dht11_freshness = max(0.0, round((datetime.now(timezone.utc) - dht_dt).total_seconds(), 1))
+                except Exception:
+                    pass
+
+            dht11_is_active = bool(dht11_freshness is not None and dht11_freshness < 180)
+            dht11_status = {
+                "active": dht11_is_active,
+                "last_reading_time": last_dht11_time,
+                "data_freshness_seconds": dht11_freshness,
+                "latest": last_dht11_reading
+            }
+
+            # Calculate primary sensor data freshness in seconds
             freshness_seconds = None
             if self.last_reading_time:
                 try:
-                    last_dt = datetime.fromisoformat(self.last_reading_time)
-                    freshness_seconds = round((datetime.now(timezone.utc) - last_dt).total_seconds(), 1)
+                    last_dt = datetime.fromisoformat(self.last_reading_time.replace("Z", "+00:00"))
+                    freshness_seconds = max(0.0, round((datetime.now(timezone.utc) - last_dt).total_seconds(), 1))
                 except Exception:
                     pass
 
@@ -448,34 +484,26 @@ class SensorService:
                 source_state = "hardware"
                 if self.driver:
                     sensor_model = getattr(self.driver, "sensor_type", "BME280")
+            elif dht11_is_active:
+                source_state = "hardware"
+                sensor_model = "DHT11"
             else:
                 source_state = "unavailable"
 
-            # Calculate DHT11 freshness
-            dht11_freshness = None
-            if self.last_dht11_time:
-                try:
-                    dht_dt = datetime.fromisoformat(self.last_dht11_time.replace("Z", "+00:00"))
-                    dht11_freshness = round((datetime.now(timezone.utc) - dht_dt).total_seconds(), 1)
-                except Exception:
-                    pass
-
-            dht11_status = {
-                "active": (dht11_freshness is not None and dht11_freshness < 180),
-                "last_reading_time": self.last_dht11_time,
-                "data_freshness_seconds": dht11_freshness,
-                "latest": self.last_dht11_reading
-            }
+            # In live mode when no local I2C BMP280 is attached, report remote DHT11 telemetry state
+            display_last_time = self.last_reading_time or (last_dht11_time if self.mode == "live" else None)
+            display_freshness = freshness_seconds if self.last_reading_time else (dht11_freshness if self.mode == "live" else None)
+            display_is_connected = self.is_connected or (dht11_is_active if self.mode == "live" else False)
 
             return {
                 "mode": self.mode,
                 "data_source": source_state,
-                "is_connected": self.is_connected,
+                "is_connected": display_is_connected,
                 "sensor_type": sensor_model,
                 "bus": self.i2c_bus_num,
-                "address": self.detected_address or ("0x76/0x77 (Scanning)" if self.mode == "live" else "Simulated"),
-                "last_reading_time": self.last_reading_time,
-                "data_freshness_seconds": freshness_seconds,
+                "address": self.detected_address or ("0x76/0x77 (Scanning)" if self.mode == "live" and not dht11_is_active else ("DHT11 (Remote)" if dht11_is_active else ("0x76/0x77 (Scanning)" if self.mode == "live" else "Simulated"))),
+                "last_reading_time": display_last_time,
+                "data_freshness_seconds": display_freshness,
                 "consecutive_errors": self.consecutive_errors,
                 "last_error": self.last_error,
                 "demo_spike_active": self.demo_spike_active,

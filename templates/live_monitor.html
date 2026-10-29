@@ -6,12 +6,12 @@
 {% block content %}
 <div class="row g-4 mb-4">
   <!-- Temperature Live Gauge Box -->
-  <div class="col-12 col-md-6">
-    <div class="va-card text-center py-4">
-      <div class="va-card-title mb-2">Real-Time Ambient Temperature</div>
-      <div class="display-1 fw-bold text-white my-2" id="liveTempVal">--.-</div>
-      <div class="fs-4 text-cyan fw-semibold">°C (Celsius)</div>
-      <div class="d-flex justify-content-center align-items-center gap-3 mt-3">
+  <div class="col-12 col-md-4">
+    <div class="va-card text-center py-4 h-100">
+      <div class="va-card-title mb-2">Ambient Temperature</div>
+      <div class="display-3 fw-bold text-white my-2" id="liveTempVal">--.-</div>
+      <div class="fs-5 text-cyan fw-semibold">°C (Celsius)</div>
+      <div class="d-flex justify-content-center align-items-center gap-2 mt-3 flex-wrap">
         <span class="status-pill online" id="liveTempStatus">
           <span class="status-dot"></span>
           <span id="liveTempStatusText">Normal Range</span>
@@ -21,16 +21,32 @@
     </div>
   </div>
 
+  <!-- Relative Humidity Live Gauge Box -->
+  <div class="col-12 col-md-4">
+    <div class="va-card text-center py-4 h-100">
+      <div class="va-card-title mb-2">Relative Humidity</div>
+      <div class="display-3 fw-bold text-white my-2" id="liveHumVal">--.-</div>
+      <div class="fs-5 text-cyan fw-semibold">% (RH)</div>
+      <div class="d-flex justify-content-center align-items-center gap-2 mt-3 flex-wrap">
+        <span class="status-pill online" id="liveHumStatus">
+          <span class="status-dot"></span>
+          <span id="liveHumStatusText">DHT11 Active</span>
+        </span>
+        <span class="text-secondary small" id="liveHeatIndexInfo">Heat Index: --°C</span>
+      </div>
+    </div>
+  </div>
+
   <!-- Barometric Pressure Live Gauge Box -->
-  <div class="col-12 col-md-6">
-    <div class="va-card text-center py-4">
-      <div class="va-card-title mb-2">Real-Time Atmospheric Pressure</div>
-      <div class="display-1 fw-bold text-white my-2" id="livePressVal">----.-</div>
-      <div class="fs-4 text-cyan fw-semibold">hPa (Hectopascals)</div>
-      <div class="d-flex justify-content-center align-items-center gap-3 mt-3">
+  <div class="col-12 col-md-4">
+    <div class="va-card text-center py-4 h-100">
+      <div class="va-card-title mb-2">Barometric Pressure</div>
+      <div class="display-3 fw-bold text-white my-2" id="livePressVal">----.-</div>
+      <div class="fs-5 text-cyan fw-semibold">hPa (Hectopascals)</div>
+      <div class="d-flex justify-content-center align-items-center gap-2 mt-3 flex-wrap">
         <span class="status-pill online" id="livePressStatus">
           <span class="status-dot"></span>
-          <span id="livePressStatusText">Nominal Sea-Level Scale</span>
+          <span id="livePressStatusText">Nominal Scale</span>
         </span>
         <span class="text-secondary small" id="livePressBaroTrend">Trend: Calculating...</span>
       </div>
@@ -101,6 +117,8 @@
             <tr>
               <th>Timestamp</th>
               <th>Temp (°C)</th>
+              <th>Humidity (%)</th>
+              <th>Heat Index (°C)</th>
               <th>Pressure (hPa)</th>
               <th>Source</th>
               <th>Status</th>
@@ -108,7 +126,7 @@
           </thead>
           <tbody id="liveStreamTbody">
             <tr>
-              <td colspan="5" class="text-center py-4 text-secondary">
+              <td colspan="7" class="text-center py-4 text-secondary">
                 Waiting for incoming sensor pulse...
               </td>
             </tr>

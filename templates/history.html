@@ -62,6 +62,7 @@
     <div class="va-card text-center py-3">
       <div class="text-secondary small text-uppercase">Sample Count</div>
       <div class="fs-3 fw-bold text-white mt-1" id="statSampleCount">--</div>
+      <div class="small text-muted"><span id="statDataIntegrity" class="text-success fw-semibold">100%</span> valid</div>
     </div>
   </div>
   <div class="col-6 col-lg-3">
@@ -73,28 +74,35 @@
   </div>
   <div class="col-6 col-lg-3">
     <div class="va-card text-center py-3">
+      <div class="text-secondary small text-uppercase">Humidity Range</div>
+      <div class="fs-4 fw-bold text-cyan mt-1" id="statHumRange">-- / -- %</div>
+      <div class="small text-muted" id="statHumAvg">Avg: -- %</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="va-card text-center py-3">
       <div class="text-secondary small text-uppercase">Pressure Range</div>
       <div class="fs-4 fw-bold text-cyan mt-1" id="statPressRange">-- / -- hPa</div>
       <div class="small text-muted" id="statPressAvg">Avg: -- hPa</div>
     </div>
   </div>
-  <div class="col-6 col-lg-3">
-    <div class="va-card text-center py-3">
-      <div class="text-secondary small text-uppercase">Data Integrity</div>
-      <div class="fs-4 fw-bold text-success mt-1" id="statDataIntegrity">100%</div>
-      <div class="small text-muted">Valid measurements</div>
-    </div>
-  </div>
 </div>
 
 <!-- Historical Chart -->
-<div class="va-card mb-4">
+<div class="va-card mb-4 position-relative">
   <div class="chart-header">
     <h3 class="va-card-title m-0">Historical Environmental Trajectory</h3>
     <span class="text-secondary small" id="chartRangeLabel">Showing selected range</span>
   </div>
-  <div class="chart-box" style="height: 320px;">
+  <div class="chart-box" style="height: 340px; position: relative;">
     <canvas id="historyChart"></canvas>
+    <div id="historyChartEmptyOverlay" class="chart-empty-overlay" style="display: none;">
+      <div class="text-center p-3">
+        <div class="empty-icon mb-2">📊</div>
+        <div class="empty-title fw-bold">No readings available yet</div>
+        <div class="empty-sub text-muted small">Real sensor readings will automatically graph here once recorded.</div>
+      </div>
+    </div>
   </div>
 </div>
 

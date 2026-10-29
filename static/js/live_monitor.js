@@ -20,9 +20,21 @@
         const isLive = freshness.is_live === true;
         const isStale = freshness.is_stale === true;
 
+        const humElem = document.getElementById("liveHumVal");
+        const humStatus = document.getElementById("liveHumStatus");
+        const humStatusText = document.getElementById("liveHumStatusText");
+        const heatInfo = document.getElementById("liveHeatIndexInfo");
+
         if (latest && !isStale) {
           document.getElementById("liveTempVal").textContent = latest.temperature_c.toFixed(1);
+          if (humElem) humElem.textContent = (latest.humidity_pct !== null && latest.humidity_pct !== undefined) ? latest.humidity_pct.toFixed(1) : "--.-";
           document.getElementById("livePressVal").textContent = (latest.pressure_hpa !== null && latest.pressure_hpa !== undefined) ? latest.pressure_hpa.toFixed(1) : "----.-";
+
+          if (heatInfo) {
+            heatInfo.textContent = (latest.heat_index_c !== null && latest.heat_index_c !== undefined) ? `Heat Index: ${latest.heat_index_c.toFixed(1)}°C` : "Heat Index: --°C";
+          }
+          if (humStatus) humStatus.className = "status-pill online";
+          if (humStatusText) humStatusText.textContent = (latest.humidity_pct !== null) ? "DHT11 Streaming" : "Sensor Active";
 
           // Threshold info
           if (alertInfo.threshold_c) {
@@ -59,18 +71,24 @@
           }
         } else if (latest && isStale) {
           document.getElementById("liveTempVal").textContent = `${latest.temperature_c.toFixed(1)} (Stale)`;
+          if (humElem) humElem.textContent = (latest.humidity_pct !== null && latest.humidity_pct !== undefined) ? `${latest.humidity_pct.toFixed(1)} (Stale)` : "--.-";
           document.getElementById("livePressVal").textContent = (latest.pressure_hpa !== null && latest.pressure_hpa !== undefined) ? `${latest.pressure_hpa.toFixed(1)} (Stale)` : "----.-";
           const tempStatus = document.getElementById("liveTempStatus");
           const tempStatusText = document.getElementById("liveTempStatusText");
           if (tempStatus) tempStatus.className = "status-pill offline";
           if (tempStatusText) tempStatusText.textContent = "Sensor Offline (Stale Reading)";
+          if (humStatus) humStatus.className = "status-pill offline";
+          if (humStatusText) humStatusText.textContent = "DHT11 Offline (Stale)";
         } else {
           document.getElementById("liveTempVal").textContent = "--.-";
+          if (humElem) humElem.textContent = "--.-";
           document.getElementById("livePressVal").textContent = "----.-";
           const tempStatus = document.getElementById("liveTempStatus");
           const tempStatusText = document.getElementById("liveTempStatusText");
           if (tempStatus) tempStatus.className = "status-pill offline";
           if (tempStatusText) tempStatusText.textContent = "No Live Reading";
+          if (humStatus) humStatus.className = "status-pill offline";
+          if (humStatusText) humStatusText.textContent = "No Live Reading";
         }
 
 
@@ -84,7 +102,7 @@
           document.getElementById("diagMode").textContent = "Demo (Simulated)";
         } else if (sensor.is_connected) {
           diagPill.className = "status-pill online";
-          diagStatusText.textContent = "Connected (I²C)";
+          diagStatusText.textContent = "Connected (Live)";
           document.getElementById("diagMode").textContent = "Live Hardware";
         } else {
           diagPill.className = "status-pill offline";
@@ -107,16 +125,20 @@
     if (counter) counter.textContent = `${streamRecords.length} pulses received`;
 
     if (streamRecords.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-secondary">Awaiting initial sensor pulse...</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-secondary">Awaiting initial sensor pulse...</td></tr>`;
       return;
     }
 
     tbody.innerHTML = streamRecords.map(r => {
+      const humStr = (r.humidity_pct !== null && r.humidity_pct !== undefined) ? `${r.humidity_pct.toFixed(1)}%` : '<span class="text-secondary">–</span>';
+      const hiStr = (r.heat_index_c !== null && r.heat_index_c !== undefined) ? `${r.heat_index_c.toFixed(1)}°` : '<span class="text-secondary">–</span>';
       const pressStr = (r.pressure_hpa !== null && r.pressure_hpa !== undefined) ? `${r.pressure_hpa.toFixed(2)}` : '<span class="text-secondary">–</span>';
       return `
         <tr>
           <td>${new Date(r.timestamp).toLocaleTimeString([], { hour12: false })}</td>
           <td class="text-cyan fw-bold">${r.temperature_c.toFixed(2)}</td>
+          <td class="text-white">${humStr}</td>
+          <td>${hiStr}</td>
           <td class="text-white fw-semibold">${pressStr}</td>
           <td><span class="badge-tag ${r.source}">${r.source}</span></td>
           <td><span class="badge-tag ${r.validity_status}">${r.validity_status}</span></td>

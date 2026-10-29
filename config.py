@@ -8,17 +8,112 @@ BASE_DIR = Path(__file__).resolve().parent
 
 class ConfigMeta(type):
     """Metaclass enabling dynamic class-level property access on Config."""
+    _overrides = {}
+
     @property
     def INGEST_KEY(cls) -> Optional[str]:
+        if "INGEST_KEY" in cls._overrides:
+            return cls._overrides["INGEST_KEY"]
         return cls.get_ingest_key()
+
+    @INGEST_KEY.setter
+    def INGEST_KEY(cls, val):
+        cls._overrides["INGEST_KEY"] = val
+
+    @INGEST_KEY.deleter
+    def INGEST_KEY(cls):
+        cls._overrides.pop("INGEST_KEY", None)
 
     @property
     def DHT11_INGEST_KEY(cls) -> Optional[str]:
+        if "DHT11_INGEST_KEY" in cls._overrides:
+            return cls._overrides["DHT11_INGEST_KEY"]
         return cls.get_dht11_ingest_key()
+
+    @DHT11_INGEST_KEY.setter
+    def DHT11_INGEST_KEY(cls, val):
+        cls._overrides["DHT11_INGEST_KEY"] = val
+
+    @DHT11_INGEST_KEY.deleter
+    def DHT11_INGEST_KEY(cls):
+        cls._overrides.pop("DHT11_INGEST_KEY", None)
 
     @property
     def CONTROL_KEY(cls) -> Optional[str]:
+        if "CONTROL_KEY" in cls._overrides:
+            return cls._overrides["CONTROL_KEY"]
         return cls.get_control_key()
+
+    @CONTROL_KEY.setter
+    def CONTROL_KEY(cls, val):
+        cls._overrides["CONTROL_KEY"] = val
+
+    @CONTROL_KEY.deleter
+    def CONTROL_KEY(cls):
+        cls._overrides.pop("CONTROL_KEY", None)
+
+    @property
+    def MODE(cls) -> str:
+        if "MODE" in cls._overrides:
+            return cls._overrides["MODE"]
+        va_mode = os.environ.get("VA_MODE", "").strip().lower()
+        if va_mode in ("live", "demo"):
+            return va_mode
+        if cls.is_production_mode():
+            return "live"
+        return "demo"
+
+    @MODE.setter
+    def MODE(cls, val):
+        cls._overrides["MODE"] = val
+
+    @MODE.deleter
+    def MODE(cls):
+        cls._overrides.pop("MODE", None)
+
+    @property
+    def TURSO_DATABASE_URL(cls) -> str:
+        if "TURSO_DATABASE_URL" in cls._overrides:
+            return cls._overrides["TURSO_DATABASE_URL"]
+        return os.environ.get("TURSO_DATABASE_URL", "").strip()
+
+    @TURSO_DATABASE_URL.setter
+    def TURSO_DATABASE_URL(cls, val):
+        cls._overrides["TURSO_DATABASE_URL"] = val
+
+    @TURSO_DATABASE_URL.deleter
+    def TURSO_DATABASE_URL(cls):
+        cls._overrides.pop("TURSO_DATABASE_URL", None)
+
+    @property
+    def TURSO_AUTH_TOKEN(cls) -> str:
+        if "TURSO_AUTH_TOKEN" in cls._overrides:
+            return cls._overrides["TURSO_AUTH_TOKEN"]
+        return os.environ.get("TURSO_AUTH_TOKEN", "").strip()
+
+    @TURSO_AUTH_TOKEN.setter
+    def TURSO_AUTH_TOKEN(cls, val):
+        cls._overrides["TURSO_AUTH_TOKEN"] = val
+
+    @TURSO_AUTH_TOKEN.deleter
+    def TURSO_AUTH_TOKEN(cls):
+        cls._overrides.pop("TURSO_AUTH_TOKEN", None)
+
+    @property
+    def DATABASE_PATH(cls) -> str:
+        if "DATABASE_PATH" in cls._overrides:
+            return cls._overrides["DATABASE_PATH"]
+        is_vercel = bool(os.environ.get("VERCEL") or os.environ.get("VERCEL_ENV"))
+        data_dir = Path("/tmp") if is_vercel else (cls.BASE_DIR / "data")
+        return os.environ.get("VA_DB_PATH", str(data_dir / "virtual_atmosphere.db"))
+
+    @DATABASE_PATH.setter
+    def DATABASE_PATH(cls, val):
+        cls._overrides["DATABASE_PATH"] = val
+
+    @DATABASE_PATH.deleter
+    def DATABASE_PATH(cls):
+        cls._overrides.pop("DATABASE_PATH", None)
 
 class Config(metaclass=ConfigMeta):
     """Application configuration for Virtual Atmosphere."""
@@ -38,24 +133,6 @@ class Config(metaclass=ConfigMeta):
     # Detect Vercel serverless cloud environment
     IS_VERCEL = bool(os.environ.get("VERCEL") or os.environ.get("VERCEL_ENV"))
 
-    # Runtime Mode: 'demo' or 'live'
-    # 1. Respect explicit VA_MODE if configured ('live' or 'demo')
-    # 2. When running in production (VERCEL_ENV == 'production', FLASK_ENV in ('production', 'prod'), or when remote Turso DB is configured), default to 'live'
-    # 3. Otherwise in local development on non-hardware machines, default to 'demo'
-    _va_mode_env = os.environ.get("VA_MODE", "").strip().lower()
-    _is_prod_env = bool(
-        os.environ.get("VERCEL_ENV", "").strip().lower() == "production"
-        or os.environ.get("FLASK_ENV", "").strip().lower() in ("production", "prod")
-        or (os.environ.get("TURSO_DATABASE_URL", "").strip() and os.environ.get("TURSO_AUTH_TOKEN", "").strip())
-    )
-    if _va_mode_env in ("live", "demo"):
-        MODE = _va_mode_env
-    elif _is_prod_env:
-        MODE = "live"
-    else:
-        MODE = "demo"
-
-
     # Network Binding
     # Default to 127.0.0.1 for secure local development.
     # Set VA_HOST=0.0.0.0 to allow access from phones/tablets on local Wi-Fi.
@@ -64,14 +141,9 @@ class Config(metaclass=ConfigMeta):
     DEBUG = os.environ.get("FLASK_DEBUG", "0").strip() in ("1", "true", "True")
 
     # Database Settings
-    # On Vercel serverless, the root directory is read-only; use writable /tmp
-    DATA_DIR = Path("/tmp") if IS_VERCEL else (BASE_DIR / "data")
-    DATABASE_PATH = os.environ.get("VA_DB_PATH", str(DATA_DIR / "virtual_atmosphere.db"))
+    # Note: DATABASE_PATH, TURSO_DATABASE_URL, TURSO_AUTH_TOKEN, and MODE are dynamically
+    # evaluated via ConfigMeta to ensure environment variables (VA_MODE, TURSO_*) take effect immediately.
 
-    # Remote Persistent Database Settings (for Vercel serverless persistence)
-    # Turso libSQL over HTTP (zero external dependencies):
-    TURSO_DATABASE_URL = os.environ.get("TURSO_DATABASE_URL", "").strip()
-    TURSO_AUTH_TOKEN = os.environ.get("TURSO_AUTH_TOKEN", "").strip()
     # PostgreSQL / Neon / Supabase:
     POSTGRES_URL = os.environ.get("POSTGRES_URL", "").strip() or os.environ.get("DATABASE_URL", "").strip()
 
@@ -116,18 +188,20 @@ class Config(metaclass=ConfigMeta):
     @classmethod
     def is_production_mode(cls) -> bool:
         """Determines if the application is running in production, on Vercel production, or in live hardware mode."""
+        va_mode = os.environ.get("VA_MODE", "").strip().lower()
+        if va_mode == "demo":
+            return False
+        if va_mode == "live":
+            return True
         flask_env = os.environ.get("FLASK_ENV", "").strip().lower()
         vercel_env = os.environ.get("VERCEL_ENV", "").strip().lower()
-        va_mode = os.environ.get("VA_MODE", "").strip().lower() or cls.MODE
         has_turso = bool(
-            (cls.TURSO_DATABASE_URL or os.environ.get("TURSO_DATABASE_URL", "").strip())
-            and (cls.TURSO_AUTH_TOKEN or os.environ.get("TURSO_AUTH_TOKEN", "").strip())
+            cls.TURSO_DATABASE_URL and cls.TURSO_AUTH_TOKEN
         )
         return bool(
             cls.IS_VERCEL
-            or va_mode == "live"
-            or flask_env in ("production", "prod")
             or vercel_env == "production"
+            or flask_env in ("production", "prod")
             or has_turso
         )
 

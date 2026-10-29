@@ -28,33 +28,21 @@ def test_pages_render(app_client):
         res = client.get(p)
         assert res.status_code in [200, 302], f"Failed on page: {p}"
 
-def test_project_overview_and_team_content(app_client):
+def test_project_and_team_details_removed_and_redirected(app_client):
     client, _ = app_client
-    res = client.get("/about")
-    assert res.status_code == 200
-    html = res.get_data(as_text=True)
+    # Verify legacy about and project routes redirect cleanly to /dashboard
+    for legacy_route in ["/about", "/project", "/project-overview"]:
+        res = client.get(legacy_route)
+        assert res.status_code == 302
+        assert res.headers["Location"].endswith("/dashboard") or res.headers["Location"] == "/dashboard"
 
-    # Verify team members
-    assert "Vasu" in html
-    assert "Thakshanamoorthi S" in html
-    assert "Nithilan" in html
-
-    # Verify live production dashboard URL
-    assert "va.developerhut.in" in html
-
-    # Verify 7 workflow steps
-    assert "Sensor Setup" in html
-    assert "Data Collection" in html
-    assert "Data Processing" in html
-    assert "Data Storage" in html
-    assert "Backend Processing" in html
-    assert "Dashboard View" in html
-    assert "Testing &amp; Deploy" in html
-
-    # Verify transparency on measurement limitations (no fake humidity)
-    assert "does not contain a relative humidity sensor" in html
-    assert "No Fabricated Humidity" in html
-    assert "WBGT" in html
+    # Verify dashboard page focuses strictly on environmental monitoring without team/project cards
+    res_dash = client.get("/dashboard")
+    assert res_dash.status_code == 200
+    html = res_dash.get_data(as_text=True)
+    assert "Meet the Team" not in html
+    assert "Thakshanamoorthi" not in html
+    assert "Project Details" not in html
 
 def test_api_status(app_client):
     client, _ = app_client

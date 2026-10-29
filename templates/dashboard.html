@@ -123,8 +123,19 @@
       </div>
     </div>
   </div>
-  <div class="chart-box-sunset" style="position: relative; height: 320px;">
+  <div class="chart-box-sunset" style="position: relative; height: 340px;">
     <canvas id="temperatureChart" aria-label="Temperature and relative humidity line chart over time"></canvas>
+    <div class="chart-empty-overlay d-none" id="tempChartEmptyOverlay">
+      <div class="chart-empty-icon" aria-hidden="true">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+      </div>
+      <div class="chart-empty-title">No readings available yet</div>
+      <div class="chart-empty-sub">Awaiting incoming sensor telemetry from the Raspberry Pi / Arduino ingestion pipeline</div>
+    </div>
   </div>
 </div>
 

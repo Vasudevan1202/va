@@ -36,19 +36,23 @@
 <!-- Accessible Skip Link -->
 <a href="#mainContent" class="skip-link">Skip to main content</a>
 
-<!-- Branded Initial Application Loading Screen -->
+<!-- Branded Initial Application Loading Screen (Sunset Warm Theme) -->
 <div id="vaAppLoader" class="va-initial-loader" role="status" aria-live="polite" aria-label="Loading Virtual Atmosphere">
   <div class="loader-content">
     <div class="loader-logo-wrapper">
       <img src="{{ url_for('static', filename='img/va-logo-card.png') }}" alt="Virtual Atmosphere Logo" class="loader-logo" width="92" height="92">
       <div class="loader-glow-ring"></div>
+      <div class="loader-orbit" aria-hidden="true">
+        <span class="orbit-particle"></span>
+        <span class="orbit-particle p2"></span>
+      </div>
     </div>
     <div class="loader-brand-title">Virtual Atmosphere</div>
     <div class="loader-tagline">{{ TAGLINE }}</div>
     <div class="loader-progress-track">
       <div class="loader-progress-bar"></div>
     </div>
-    <div class="loader-status-text" id="vaLoaderStatus">Initializing atmosphere monitor…</div>
+    <div class="loader-status-text" id="vaLoaderStatus">Connecting to environmental sensors...</div>
   </div>
 </div>
 
@@ -173,27 +177,7 @@
             </a>
           </li>
 
-          <li class="sidebar-nav-item">
-            <a href="{{ url_for('about') }}" class="sidebar-nav-link {% if active_page == 'about' %}active{% endif %}">
-              <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10"></circle>
-                <line x1="12" y1="16" x2="12" y2="12"></line>
-                <line x1="12" y1="8" x2="12.01" y2="8"></line>
-              </svg>
-              <span>About</span>
-            </a>
-          </li>
 
-          <li class="sidebar-nav-item">
-            <a href="{{ url_for('about') }}#workflow-architecture" class="sidebar-nav-link">
-              <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
-                <polyline points="2 17 12 22 22 17"></polyline>
-                <polyline points="2 12 12 17 22 12"></polyline>
-              </svg>
-              <span>Project Info</span>
-            </a>
-          </li>
 
           <li class="sidebar-nav-item">
             <a href="{{ url_for('system') }}" class="sidebar-nav-link {% if active_page == 'system' %}active{% endif %}">

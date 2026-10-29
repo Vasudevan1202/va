@@ -14,7 +14,14 @@ logger = logging.getLogger("va.database")
 
 def is_turso_active(db_path: Optional[str] = None) -> bool:
     """Returns True if remote Turso libSQL is configured and no local db_path override is provided."""
-    return db_path is None and bool(Config.TURSO_DATABASE_URL and Config.TURSO_AUTH_TOKEN)
+    url = getattr(Config, "TURSO_DATABASE_URL", "") or os.environ.get("TURSO_DATABASE_URL", "").strip()
+    token = getattr(Config, "TURSO_AUTH_TOKEN", "") or os.environ.get("TURSO_AUTH_TOKEN", "").strip()
+    if not (url and token):
+        return False
+    default_path = getattr(Config, "DATABASE_PATH", None)
+    if db_path is None or db_path == default_path:
+        return True
+    return False
 
 def _get_turso_pipeline_url() -> Optional[str]:
     url = Config.TURSO_DATABASE_URL

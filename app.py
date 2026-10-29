@@ -90,8 +90,13 @@ def create_app(test_config=None) -> Flask:
     app.config["SESSION_COOKIE_SAMESITE"] = app.config.get("SESSION_COOKIE_SAMESITE", Config.SESSION_COOKIE_SAMESITE)
     app.config["SESSION_COOKIE_SECURE"] = app.config.get("SESSION_COOKIE_SECURE", Config.SESSION_COOKIE_SECURE)
 
-    # Initialize SQLite database
-    db_path = app.config.get("DATABASE_PATH", Config.DATABASE_PATH)
+    # Initialize database
+    if app.config.get("TESTING") or "DATABASE_PATH" in app.config:
+        db_path = app.config.get("DATABASE_PATH")
+    elif Config.TURSO_DATABASE_URL and Config.TURSO_AUTH_TOKEN:
+        db_path = None
+    else:
+        db_path = Config.DATABASE_PATH
     database.init_db(db_path)
 
     # Only auto-seed demo data in local non-production demo development when the database is empty
@@ -167,7 +172,7 @@ def create_app(test_config=None) -> Flask:
         if "csrf_token" not in session:
             session["csrf_token"] = secrets.token_hex(24)
 
-        if not app.config.get("TESTING", False):
+        if not app.config.get("TESTING", False) and not Config.is_production_mode():
             if hasattr(app, "sensor_service") and app.sensor_service and app.sensor_service.mode == "demo":
                 if not request.path.startswith("/static"):
                     app.sensor_service.ensure_sample()
@@ -240,12 +245,10 @@ def create_app(test_config=None) -> Flask:
 
     @app.route("/about")
     @app.route("/project")
-    def about():
-        return render_template("about.html", active_page="about")
-
     @app.route("/project-overview")
-    def project_overview():
-        return redirect(url_for("about"))
+    def about():
+        """Redirect legacy project/team routes to main overview dashboard."""
+        return redirect(url_for("dashboard"), code=302)
 
     # ==========================================
     # REST API Endpoints

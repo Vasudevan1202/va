@@ -135,7 +135,6 @@ def test_favicon_and_branding_in_rendered_html(test_client):
         ("/history", "Historical Data | Virtual Atmosphere"),
         ("/alerts", "Alerts &amp; Thresholds | Virtual Atmosphere"),
         ("/system", "Sensor &amp; System | Virtual Atmosphere"),
-        ("/about", "Project &amp; Team | Virtual Atmosphere"),
     ]
 
     for path, expected_title in pages:

@@ -75,56 +75,125 @@
             {
               label: "Temperature (°C)",
               data: [],
-              borderColor: "#ef4444",
-              backgroundColor: "rgba(239, 68, 68, 0.15)",
-              borderWidth: 2.5,
-              tension: 0.38,
-              fill: true,
-              pointRadius: 2,
+              borderColor: "#dc2626",
+              backgroundColor: "rgba(220, 38, 38, 0.10)",
+              borderWidth: 3,
+              tension: 0.35,
+              fill: false,
+              pointRadius: 3,
               pointHoverRadius: 6,
-              pointBackgroundColor: "#ef4444",
-              yAxisID: "y"
+              pointBackgroundColor: "#dc2626",
+              pointBorderColor: "#ffffff",
+              pointBorderWidth: 1.5,
+              yAxisID: "yTemp"
             },
             {
-              label: "Humidity (%)",
+              label: "Relative Humidity (%)",
               data: [],
               borderColor: "#0284c7",
-              backgroundColor: "rgba(2, 132, 199, 0.12)",
-              borderWidth: 2.5,
-              tension: 0.38,
-              fill: true,
-              pointRadius: 2,
+              backgroundColor: "rgba(2, 132, 199, 0.08)",
+              borderWidth: 3,
+              tension: 0.35,
+              fill: false,
+              pointRadius: 3,
               pointHoverRadius: 6,
               pointBackgroundColor: "#0284c7",
-              yAxisID: "y"
+              pointBorderColor: "#ffffff",
+              pointBorderWidth: 1.5,
+              yAxisID: "yHum"
             }
           ]
         },
         options: {
-          ...SUNSET_CHART_DEFAULTS,
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: { duration: 350 },
+          interaction: { mode: "index", intersect: false },
+          layout: {
+            padding: { top: 12, right: 16, bottom: 8, left: 8 }
+          },
           plugins: {
-            ...SUNSET_CHART_DEFAULTS.plugins,
+            legend: { display: false },
             tooltip: {
-              ...SUNSET_CHART_DEFAULTS.plugins.tooltip,
+              backgroundColor: "rgba(255, 255, 255, 0.98)",
+              titleColor: "#1f1412",
+              bodyColor: "#5a463e",
+              borderColor: "rgba(230, 210, 195, 0.95)",
+              borderWidth: 1.5,
+              padding: 12,
+              boxPadding: 6,
+              usePointStyle: true,
+              titleFont: { size: 13, weight: "700", family: "'Inter', sans-serif" },
+              bodyFont: { size: 13, weight: "600", family: "'Inter', sans-serif" },
               callbacks: {
-                ...SUNSET_CHART_DEFAULTS.plugins.tooltip.callbacks,
+                title: function (items) {
+                  return items.length ? "Timestamp: " + items[0].label : "";
+                },
                 label: function (ctx) {
-                  const val = ctx.parsed.y !== null && ctx.parsed.y !== undefined ? ctx.parsed.y.toFixed(1) : "--";
-                  return `${ctx.dataset.label}: ${val}`;
+                  if (ctx.parsed.y === null || ctx.parsed.y === undefined) {
+                    return `${ctx.dataset.label}: --`;
+                  }
+                  if (ctx.dataset.yAxisID === "yTemp") {
+                    return `Temperature: ${ctx.parsed.y.toFixed(1)} °C`;
+                  } else if (ctx.dataset.yAxisID === "yHum") {
+                    return `Relative Humidity: ${ctx.parsed.y.toFixed(0)}%`;
+                  }
+                  return `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)}`;
                 }
               }
             }
           },
           scales: {
-            ...SUNSET_CHART_DEFAULTS.scales,
-            y: {
-              ...SUNSET_CHART_DEFAULTS.scales.y,
-              suggestedMin: 0,
-              suggestedMax: 50,
+            x: {
+              title: {
+                display: true,
+                text: "Time",
+                color: "#5a463e",
+                font: { size: 13, weight: "700", family: "'Inter', sans-serif" },
+                padding: { top: 6 }
+              },
+              grid: { color: "rgba(225, 200, 180, 0.35)" },
               ticks: {
-                ...SUNSET_CHART_DEFAULTS.scales.y.ticks,
-                stepSize: 15
+                color: "#5a463e",
+                maxTicksLimit: 8,
+                font: { size: 12, weight: "600", family: "'Inter', sans-serif" }
               }
+            },
+            yTemp: {
+              type: "linear",
+              position: "left",
+              title: {
+                display: true,
+                text: "Temperature (°C)",
+                color: "#dc2626",
+                font: { size: 13, weight: "700", family: "'Inter', sans-serif" }
+              },
+              grid: { color: "rgba(225, 200, 180, 0.35)" },
+              ticks: {
+                color: "#dc2626",
+                font: { size: 12, weight: "600", family: "'Inter', sans-serif" },
+                callback: function (val) { return val + " °C"; }
+              },
+              suggestedMin: 15,
+              suggestedMax: 45
+            },
+            yHum: {
+              type: "linear",
+              position: "right",
+              title: {
+                display: true,
+                text: "Relative Humidity (%)",
+                color: "#0284c7",
+                font: { size: 13, weight: "700", family: "'Inter', sans-serif" }
+              },
+              grid: { drawOnChartArea: false },
+              ticks: {
+                color: "#0284c7",
+                font: { size: 12, weight: "600", family: "'Inter', sans-serif" },
+                callback: function (val) { return val + "%"; }
+              },
+              min: 0,
+              max: 100
             }
           }
         }
@@ -143,24 +212,71 @@
             data: [],
             borderColor: "#ea580c",
             backgroundColor: "rgba(234, 88, 12, 0.12)",
-            borderWidth: 2,
+            borderWidth: 3,
             tension: 0.35,
             fill: true,
-            pointRadius: 1,
-            pointHoverRadius: 5
+            pointRadius: 2,
+            pointHoverRadius: 6,
+            pointBackgroundColor: "#ea580c"
           }]
         },
         options: {
-          ...SUNSET_CHART_DEFAULTS,
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: { duration: 350 },
+          interaction: { mode: "index", intersect: false },
+          layout: {
+            padding: { top: 12, right: 16, bottom: 8, left: 8 }
+          },
           plugins: {
-            ...SUNSET_CHART_DEFAULTS.plugins,
+            legend: { display: false },
             tooltip: {
-              ...SUNSET_CHART_DEFAULTS.plugins.tooltip,
+              backgroundColor: "rgba(255, 255, 255, 0.98)",
+              titleColor: "#1f1412",
+              bodyColor: "#5a463e",
+              borderColor: "rgba(230, 210, 195, 0.95)",
+              borderWidth: 1.5,
+              padding: 12,
+              titleFont: { size: 13, weight: "700", family: "'Inter', sans-serif" },
+              bodyFont: { size: 13, weight: "600", family: "'Inter', sans-serif" },
               callbacks: {
-                ...SUNSET_CHART_DEFAULTS.plugins.tooltip.callbacks,
+                title: function (items) {
+                  return items.length ? "Timestamp: " + items[0].label : "";
+                },
                 label: function (ctx) {
                   return `Pressure: ${ctx.parsed.y !== null ? ctx.parsed.y.toFixed(1) : '--'} hPa`;
                 }
+              }
+            }
+          },
+          scales: {
+            x: {
+              title: {
+                display: true,
+                text: "Time",
+                color: "#5a463e",
+                font: { size: 13, weight: "700", family: "'Inter', sans-serif" },
+                padding: { top: 6 }
+              },
+              grid: { color: "rgba(225, 200, 180, 0.35)" },
+              ticks: {
+                color: "#5a463e",
+                maxTicksLimit: 8,
+                font: { size: 12, weight: "600", family: "'Inter', sans-serif" }
+              }
+            },
+            y: {
+              title: {
+                display: true,
+                text: "Atmospheric Pressure (hPa)",
+                color: "#ea580c",
+                font: { size: 13, weight: "700", family: "'Inter', sans-serif" }
+              },
+              grid: { color: "rgba(225, 200, 180, 0.35)" },
+              ticks: {
+                color: "#ea580c",
+                font: { size: 12, weight: "600", family: "'Inter', sans-serif" },
+                callback: function (val) { return val + " hPa"; }
               }
             }
           }
@@ -456,15 +572,42 @@
    * Fetches chronological readings and renders the dual-series Temperature & Humidity line chart.
    */
   async function fetchChartData(range) {
+    const emptyOverlay = document.getElementById("tempChartEmptyOverlay");
     try {
       const res = await fetch(`/api/readings?range=${encodeURIComponent(range)}`);
       if (!res.ok) throw new Error("Failed to fetch range telemetry");
       const json = await res.json();
       const readings = json.readings || [];
 
-      // Format timestamps into clean X-axis clock labels
+      if (readings.length === 0) {
+        if (emptyOverlay) emptyOverlay.classList.remove("d-none");
+        if (tempHumChart) {
+          tempHumChart.data.labels = [];
+          tempHumChart.data.datasets[0].data = [];
+          tempHumChart.data.datasets[1].data = [];
+          tempHumChart.update();
+        }
+        if (pressChart) {
+          pressChart.data.labels = [];
+          pressChart.data.datasets[0].data = [];
+          pressChart.update();
+        }
+        const summarySub = document.getElementById("combinedChartSummary");
+        if (summarySub) {
+          summarySub.textContent = `No real samples recorded in last ${range} • Awaiting incoming sensor telemetry`;
+        }
+        return;
+      }
+
+      if (emptyOverlay) emptyOverlay.classList.add("d-none");
+
+      // Format timestamps into clean, readable X-axis labels
+      const isMultiDay = (range === "7d" || range === "30d");
       const labels = readings.map((r) => {
         const d = new Date(r.timestamp);
+        if (isMultiDay) {
+          return `${d.toLocaleDateString([], { month: "short", day: "numeric" })} ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })}`;
+        }
         return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
       });
 
@@ -492,6 +635,7 @@
       }
     } catch (e) {
       console.warn("Could not refresh charts:", e);
+      if (emptyOverlay) emptyOverlay.classList.remove("d-none");
     }
   }
 
