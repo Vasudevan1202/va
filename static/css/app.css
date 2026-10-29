@@ -682,6 +682,82 @@ a:hover {
   background-color: #0284c7;
 }
 
+.legend-dot.heat-dot {
+  background-color: #ea580c;
+}
+
+.legend-dot.press-dot {
+  background-color: #8b5cf6;
+}
+
+.sunset-chart-legend .legend-item {
+  cursor: pointer;
+  user-select: none;
+  transition: opacity 0.2s ease, transform 0.15s ease;
+  padding: 2px 6px;
+  border-radius: var(--radius-xs);
+}
+
+.sunset-chart-legend .legend-item:hover {
+  background-color: rgba(230, 210, 195, 0.3);
+}
+
+.sunset-chart-legend .legend-item.dimmed {
+  opacity: 0.42;
+  text-decoration: line-through;
+}
+
+/* Compact per-chart statistics summary strip */
+.chart-stats-strip {
+  padding-top: 10px;
+  margin-top: 12px;
+  border-top: 1px solid var(--border-light);
+  color: var(--text-secondary);
+  font-size: 11.5px;
+}
+
+.chart-stats-strip.unavailable {
+  background-color: rgba(245, 245, 244, 0.7);
+  padding: 8px 12px;
+  border-radius: var(--radius-xs);
+  border-top: none;
+}
+
+.chart-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: var(--radius-pill);
+}
+
+.chart-badge.danger {
+  background-color: rgba(220, 38, 38, 0.12);
+  color: #dc2626;
+  border: 1px solid rgba(220, 38, 38, 0.3);
+}
+
+.chart-badge.warning {
+  background-color: rgba(234, 88, 12, 0.12);
+  color: #ea580c;
+  border: 1px solid rgba(234, 88, 12, 0.3);
+}
+
+.chart-badge.success {
+  background-color: rgba(22, 163, 74, 0.12);
+  color: #16a34a;
+  border: 1px solid rgba(22, 163, 74, 0.3);
+}
+
+.chart-badge.secondary {
+  background-color: rgba(115, 98, 89, 0.12);
+  color: #736259;
+  border: 1px solid rgba(115, 98, 89, 0.25);
+}
+
+
 /* Pill Range Filter Buttons */
 .btn-group-pill {
   display: inline-flex;

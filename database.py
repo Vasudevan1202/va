@@ -547,13 +547,189 @@ def parse_range_to_cutoff(range_code: str) -> datetime:
     delta = range_map.get(range_code.lower(), timedelta(hours=24))
     return now - delta
 
-def get_readings_range(range_code: str = "24h", db_path: Optional[str] = None, real_only: bool = False) -> List[Dict[str, Any]]:
+def downsample_readings(
+    readings: List[Dict[str, Any]],
+    max_points: int = 400,
+    threshold_c: Optional[float] = None,
+    max_gap_seconds: Optional[float] = None
+) -> List[Dict[str, Any]]:
     """
-    Retrieves chronological readings within a standard time range for charting.
+    Downsamples chronological readings for responsive visualization while:
+    - Strictly preserving global min and max peaks for temperature, humidity, pressure
+    - Strictly preserving all readings exceeding or crossing the temperature alert threshold
+    - Strictly preserving local extrema in each time bucket
+    - Inserting gap breaks (null values) across significant missing telemetry intervals
+    - Retaining chronological order
+    """
+    if not readings:
+        return []
+
+    # 1. Determine gap threshold if not explicitly specified
+    if max_gap_seconds is None:
+        if len(readings) > 1:
+            try:
+                t0 = datetime.fromisoformat(readings[0]["timestamp"].replace("Z", "+00:00"))
+                tN = datetime.fromisoformat(readings[-1]["timestamp"].replace("Z", "+00:00"))
+                total_duration = max(1.0, (tN - t0).total_seconds())
+                # For <= 24h: 30 mins (1800s); for > 24h: 2 hours (7200s)
+                max_gap_seconds = 7200.0 if total_duration > 86400.0 else 1800.0
+            except Exception:
+                max_gap_seconds = 1800.0
+        else:
+            max_gap_seconds = 1800.0
+
+    # 2. Identify indices to preserve
+    n = len(readings)
+    if n <= max_points:
+        selected_indices = set(range(n))
+    else:
+        selected_indices = set()
+        selected_indices.add(0)
+        selected_indices.add(n - 1)
+
+        # Global extrema & threshold crossings
+        min_temp_idx = None
+        max_temp_idx = None
+        min_hum_idx = None
+        max_hum_idx = None
+        min_press_idx = None
+        max_press_idx = None
+
+        min_temp = float("inf")
+        max_temp = float("-inf")
+        min_hum = float("inf")
+        max_hum = float("-inf")
+        min_press = float("inf")
+        max_press = float("-inf")
+
+        for i, r in enumerate(readings):
+            t = r.get("temperature_c")
+            h = r.get("humidity_pct")
+            p = r.get("pressure_hpa")
+
+            if t is not None:
+                if t < min_temp:
+                    min_temp = t
+                    min_temp_idx = i
+                if t > max_temp:
+                    max_temp = t
+                    max_temp_idx = i
+                if threshold_c is not None and t >= threshold_c:
+                    selected_indices.add(i)
+
+            if h is not None:
+                if h < min_hum:
+                    min_hum = h
+                    min_hum_idx = i
+                if h > max_hum:
+                    max_hum = h
+                    max_hum_idx = i
+
+            if p is not None:
+                if p < min_press:
+                    min_press = p
+                    min_press_idx = i
+                if p > max_press:
+                    max_press = p
+                    max_press_idx = i
+
+        for idx in (min_temp_idx, max_temp_idx, min_hum_idx, max_hum_idx, min_press_idx, max_press_idx):
+            if idx is not None:
+                selected_indices.add(idx)
+
+        # Bucket-based downsampling to capture local variations
+        num_buckets = max(10, max_points // 4)
+        bucket_size = n / num_buckets
+
+        for b in range(num_buckets):
+            start_i = int(b * bucket_size)
+            end_i = min(n, int((b + 1) * bucket_size))
+            if start_i >= n or start_i >= end_i:
+                continue
+
+            bucket = readings[start_i:end_i]
+            selected_indices.add(start_i)
+
+            loc_min_t = float("inf")
+            loc_max_t = float("-inf")
+            loc_min_idx = start_i
+            loc_max_idx = start_i
+
+            for offset, r in enumerate(bucket):
+                idx = start_i + offset
+                t = r.get("temperature_c")
+                if t is not None:
+                    if t < loc_min_t:
+                        loc_min_t = t
+                        loc_min_idx = idx
+                    if t > loc_max_t:
+                        loc_max_t = t
+                        loc_max_idx = idx
+
+            selected_indices.add(loc_min_idx)
+            selected_indices.add(loc_max_idx)
+
+    # 3. Assemble downsampled readings in chronological order and insert gap indicators
+    sorted_indices = sorted(selected_indices)
+    result = []
+
+    for k, idx in enumerate(sorted_indices):
+        curr = readings[idx]
+        if k > 0:
+            prev = readings[sorted_indices[k - 1]]
+            try:
+                t_prev = datetime.fromisoformat(prev["timestamp"].replace("Z", "+00:00"))
+                t_curr = datetime.fromisoformat(curr["timestamp"].replace("Z", "+00:00"))
+                gap_sec = (t_curr - t_prev).total_seconds()
+                if gap_sec > max_gap_seconds:
+                    # Insert explicit null gap point so Chart.js breaks the line instead of connecting
+                    gap_midpoint = (t_prev + timedelta(seconds=gap_sec / 2.0)).isoformat()
+                    result.append({
+                        "id": None,
+                        "timestamp": gap_midpoint,
+                        "temperature_c": None,
+                        "humidity_pct": None,
+                        "pressure_hpa": None,
+                        "heat_index_c": None,
+                        "source": "gap",
+                        "validity_status": "gap",
+                        "is_gap": True
+                    })
+            except Exception:
+                pass
+        result.append(curr)
+
+    return result
+
+def get_readings_range(
+    range_code: str = "24h",
+    start_iso: Optional[str] = None,
+    end_iso: Optional[str] = None,
+    db_path: Optional[str] = None,
+    real_only: bool = False
+) -> List[Dict[str, Any]]:
+    """
+    Retrieves chronological readings within a standard time range or custom date boundary for charting.
     Only returns valid readings.
     """
-    cutoff = parse_range_to_cutoff(range_code).isoformat()
-    extra_filter = "AND source NOT IN ('demo', 'simulated')" if real_only else ""
+    clauses = ["validity_status = 'valid'"]
+    params: List[Any] = []
+
+    if start_iso:
+        clauses.append("timestamp >= ?")
+        params.append(start_iso)
+    if end_iso:
+        clauses.append("timestamp <= ?")
+        params.append(end_iso)
+    if not start_iso and not end_iso:
+        cutoff = parse_range_to_cutoff(range_code).isoformat()
+        clauses.append("timestamp >= ?")
+        params.append(cutoff)
+
+    if real_only:
+        clauses.append("source NOT IN ('demo', 'simulated')")
+
+    where_sql = "WHERE " + " AND ".join(clauses)
 
     if is_turso_active(db_path):
         return turso_query(
@@ -561,10 +737,10 @@ def get_readings_range(range_code: str = "24h", db_path: Optional[str] = None, r
             SELECT id, timestamp, temperature_c, pressure_hpa, source, validity_status,
                    humidity_pct, heat_index_c, latitude, longitude, sensor_type
             FROM readings
-            WHERE timestamp >= ? AND validity_status = 'valid' {extra_filter}
+            {where_sql}
             ORDER BY timestamp ASC;
             """,
-            (cutoff,)
+            params
         )
 
     conn = get_connection(db_path)
@@ -575,10 +751,10 @@ def get_readings_range(range_code: str = "24h", db_path: Optional[str] = None, r
             SELECT id, timestamp, temperature_c, pressure_hpa, source, validity_status,
                    humidity_pct, heat_index_c, latitude, longitude, sensor_type
             FROM readings
-            WHERE timestamp >= ? AND validity_status = 'valid' {extra_filter}
+            {where_sql}
             ORDER BY timestamp ASC;
             """,
-            (cutoff,)
+            params
         )
         return [dict(row) for row in cursor.fetchall()]
     finally:

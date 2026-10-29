@@ -101,18 +101,20 @@
   </div>
 </div>
 
-<!-- Section 3: Dual-Series Line Chart matching Reference Image -->
+<!-- Section 3: Professional Environmental Charts Grid -->
 <div class="chart-card-sunset mb-4">
   <div class="chart-card-header d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
     <div>
       <h3 class="chart-card-title m-0">Temperature &amp; Humidity (Last 24 Hours)</h3>
-      <div class="chart-card-sub" id="combinedChartSummary">Real-time dual-sensor microclimate trends from Turso ingestion pipeline</div>
+      <div class="chart-card-sub" id="combinedChartSummary">Real-time microclimate environmental trends from Turso ingestion pipeline</div>
     </div>
     <div class="d-flex align-items-center gap-3 flex-wrap">
-      <!-- Reference Image Custom Legend -->
-      <div class="sunset-chart-legend d-flex align-items-center gap-3" aria-hidden="true">
-        <span class="legend-item"><span class="legend-dot temp-dot"></span> Temperature (°C)</span>
-        <span class="legend-item"><span class="legend-dot hum-dot"></span> Humidity (%)</span>
+      <!-- Clickable Interactive Legend -->
+      <div class="sunset-chart-legend d-flex align-items-center gap-2" id="dashboardLegendToggles" role="group" aria-label="Interactive series toggles">
+        <span class="legend-item" id="legendToggleTemp" data-target="temp" title="Toggle Temperature Visibility"><span class="legend-dot temp-dot"></span> Temp (°C)</span>
+        <span class="legend-item" id="legendToggleHum" data-target="hum" title="Toggle Humidity Visibility"><span class="legend-dot hum-dot"></span> Humidity (%)</span>
+        <span class="legend-item" id="legendToggleHeat" data-target="heat" title="Toggle Heat Index Visibility"><span class="legend-dot heat-dot"></span> Heat Index (°C)</span>
+        <span class="legend-item" id="legendTogglePress" data-target="press" title="Toggle Pressure Visibility"><span class="legend-dot press-dot"></span> Pressure (hPa)</span>
       </div>
       <!-- Range Selector Pills -->
       <div class="btn-group-pill" id="tempRangeSelector" role="group" aria-label="Time range selector">
@@ -120,21 +122,113 @@
         <button type="button" data-range="6h">6h</button>
         <button type="button" data-range="24h" class="active">24h</button>
         <button type="button" data-range="7d">7d</button>
+        <button type="button" data-range="30d">30d</button>
       </div>
     </div>
   </div>
-  <div class="chart-box-sunset" style="position: relative; height: 340px;">
-    <canvas id="temperatureChart" aria-label="Temperature and relative humidity line chart over time"></canvas>
-    <div class="chart-empty-overlay d-none" id="tempChartEmptyOverlay">
-      <div class="chart-empty-icon" aria-hidden="true">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="10"></circle>
-          <line x1="12" y1="8" x2="12" y2="12"></line>
-          <line x1="12" y1="16" x2="12.01" y2="16"></line>
-        </svg>
+
+  <!-- 4 Separated Measurement Charts Grid -->
+  <div class="row g-3">
+    <!-- Chart 1: Ambient Temperature -->
+    <div class="col-12 col-lg-6" id="cardChartTempWrapper">
+      <div class="p-3 rounded border border-light bg-light bg-opacity-25 h-100 d-flex flex-column">
+        <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-1">
+          <div>
+            <span class="fw-bold text-dark fs-6">Ambient Temperature</span>
+            <span class="badge bg-danger bg-opacity-10 text-danger ms-2" style="font-size: 11px;">Dedicated °C Axis</span>
+          </div>
+          <span class="chart-badge success" id="tempThresholdAlertBadge">Normal Safe Range</span>
+        </div>
+        <div class="chart-box-sunset flex-grow-1" style="position: relative; height: 240px;">
+          <canvas id="temperatureChart" aria-label="Ambient temperature line chart over time"></canvas>
+          <div class="chart-empty-overlay d-none" id="tempChartEmptyOverlay">
+            <div class="chart-empty-icon" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+            </div>
+            <div class="chart-empty-title">No readings available yet</div>
+            <div class="chart-empty-sub">Awaiting incoming sensor telemetry from the Raspberry Pi / Arduino ingestion pipeline</div>
+          </div>
+        </div>
+        <div id="tempChartStatsBar" class="mt-2"></div>
       </div>
-      <div class="chart-empty-title">No readings available yet</div>
-      <div class="chart-empty-sub">Awaiting incoming sensor telemetry from the Raspberry Pi / Arduino ingestion pipeline</div>
+    </div>
+
+    <!-- Chart 2: Relative Humidity -->
+    <div class="col-12 col-lg-6" id="cardChartHumWrapper">
+      <div class="p-3 rounded border border-light bg-light bg-opacity-25 h-100 d-flex flex-column">
+        <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-1">
+          <div>
+            <span class="fw-bold text-dark fs-6">Relative Humidity</span>
+            <span class="badge bg-info bg-opacity-10 text-cyan ms-2" style="font-size: 11px; color: #0284c7;">0–100% RH Axis</span>
+          </div>
+          <span class="badge bg-secondary bg-opacity-10 text-muted" id="humSensorSourceBadge" style="font-size: 11px;">DHT11 Hygrometer</span>
+        </div>
+        <div class="chart-box-sunset flex-grow-1" style="position: relative; height: 240px;">
+          <canvas id="humidityChart" aria-label="Relative humidity line chart over time"></canvas>
+          <div class="chart-empty-overlay d-none" id="humChartEmptyOverlay">
+            <div class="chart-empty-icon" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+            </div>
+            <div class="chart-empty-title">No humidity readings available</div>
+            <div class="chart-empty-sub">Awaiting hygrometer telemetry from DHT11 pipeline</div>
+          </div>
+        </div>
+        <div id="humChartStatsBar" class="mt-2"></div>
+      </div>
+    </div>
+
+    <!-- Chart 3: Calculated Heat Index -->
+    <div class="col-12 col-lg-6" id="cardChartHeatWrapper">
+      <div class="p-3 rounded border border-light bg-light bg-opacity-25 h-100 d-flex flex-column">
+        <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-1">
+          <div>
+            <span class="fw-bold text-dark fs-6">Calculated Heat Index</span>
+            <span class="badge bg-warning bg-opacity-10 ms-2" style="font-size: 11px; color: #ea580c;">NOAA Rothfusz</span>
+          </div>
+          <span class="chart-badge warning" id="heatIndexRiskCategoryBadge">Normal Comfort</span>
+        </div>
+        <div class="text-muted small mb-1" style="font-size: 11px;">
+          <em>Calculated apparent thermal comfort based on NOAA Rothfusz &bull; Not a directly measured sensor value</em>
+        </div>
+        <div class="chart-box-sunset flex-grow-1" style="position: relative; height: 220px;">
+          <canvas id="heatIndexChart" aria-label="Calculated heat index line chart over time"></canvas>
+          <div class="chart-empty-overlay d-none" id="heatChartEmptyOverlay">
+            <div class="chart-empty-icon" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+            </div>
+            <div class="chart-empty-title">Conditions Below Thermal Stress Threshold</div>
+            <div class="chart-empty-sub">NWS criteria applied when T &ge; 26.7&deg;C (80&deg;F) and RH &ge; 40%. Ambient conditions are within baseline comfort.</div>
+          </div>
+        </div>
+        <div id="heatChartStatsBar" class="mt-2"></div>
+      </div>
+    </div>
+
+    <!-- Chart 4: Atmospheric Pressure -->
+    <div class="col-12 col-lg-6" id="cardChartPressWrapper">
+      <div class="p-3 rounded border border-light bg-light bg-opacity-25 h-100 d-flex flex-column">
+        <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-1">
+          <div>
+            <span class="fw-bold text-dark fs-6">Atmospheric Pressure</span>
+            <span class="badge bg-secondary bg-opacity-10 text-muted ms-2" style="font-size: 11px;">hPa (Hectopascals)</span>
+          </div>
+          <span class="chart-badge secondary" id="pressureStatusBadge">BMP280 Barometer</span>
+        </div>
+        <div class="text-muted small mb-1" style="font-size: 11px;" id="pressChartSubtext">
+          <em>Real physical barometric measurements from Bosch BMP280 / BME280 sensor</em>
+        </div>
+        <div class="chart-box-sunset flex-grow-1" style="position: relative; height: 220px;">
+          <canvas id="pressureChart" aria-label="Atmospheric pressure line chart over time"></canvas>
+          <div class="chart-empty-overlay d-none" id="pressChartEmptyOverlay">
+            <div class="chart-empty-icon" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+            </div>
+            <div class="chart-empty-title" id="pressChartEmptyTitle">Pressure Sensor Unavailable</div>
+            <div class="chart-empty-sub" id="pressChartEmptySub">No pressure readings recorded. Physical BMP280 sensor is disconnected or DHT11 hygrometer pipeline is active (DHT11 measures temperature and humidity only).</div>
+          </div>
+        </div>
+        <div id="pressChartStatsBar" class="mt-2"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -250,50 +344,17 @@
   </div>
 </div>
 
-<!-- Section 5: Barometric Pressure Trend & Temperature Alert Controls -->
+<!-- Section 5: Temperature Alert Threshold & Microclimate Safety Controls -->
 <div class="row g-3 mb-4">
-  <!-- Barometric Pressure Chart -->
-  <div class="col-12 col-lg-6">
-    <div class="va-card h-100">
-      <div class="va-card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <div>
-          <h3 class="va-card-title m-0">Atmospheric Pressure Trend (hPa)</h3>
-          <small class="text-muted" id="pressChartSummary">BMP280 Barometer Trend</small>
-        </div>
-        <div class="btn-group-pill" id="pressRangeSelector" role="group" aria-label="Pressure range">
-          <button type="button" data-range="1h">1h</button>
-          <button type="button" data-range="6h">6h</button>
-          <button type="button" data-range="24h" class="active">24h</button>
-          <button type="button" data-range="7d">7d</button>
-        </div>
-      </div>
-      <div class="d-flex align-items-baseline my-2">
-        <span class="va-metric-val" id="cardPressVal">----.-</span>
-        <span class="va-metric-unit">hPa</span>
-        <span class="trend-badge trend-neutral ms-3" id="pressTrendBadge">
-          <span>&minus;</span> <span id="pressTrendVal">0.00</span> hPa
-        </span>
-      </div>
-      <div style="position: relative; height: 200px;">
-        <canvas id="pressureChart" aria-label="Barometric pressure trend line chart"></canvas>
-      </div>
-      <div class="d-flex justify-content-between text-muted small mt-2 pt-2 border-top border-light">
-        <span>Min: <strong class="text-dark" id="pressMin">--</strong></span>
-        <span>Avg: <strong class="text-dark" id="pressAvg">--</strong></span>
-        <span>Max: <strong class="text-dark" id="pressMax">--</strong></span>
-      </div>
-    </div>
-  </div>
-
   <!-- Alert Configuration & Threshold Control -->
   <div class="col-12 col-lg-6">
     <div class="va-card h-100">
       <div class="va-card-header">
-        <h3 class="va-card-title">Temperature Alert &amp; Heat Risk Configuration</h3>
+        <h3 class="va-card-title">Temperature Alert &amp; Safety Threshold</h3>
         <span class="badge bg-warning bg-opacity-10 border border-warning" style="color: #ea580c;">Safety Threshold</span>
       </div>
       <p class="text-muted small">
-        Configure the high-temperature warning threshold. If ambient readings reach or exceed this value, a prominent visual warning and database event are logged with hysteresis clearing.
+        Configure the high-temperature warning threshold. When ambient temperature meets or exceeds this limit, an alert reference line is shown on the temperature chart and an incident is logged.
       </p>
       <form id="formThresholdConfig" class="d-flex align-items-center gap-2 mt-3">
         <div class="input-group">
@@ -304,11 +365,23 @@
         <button type="submit" class="va-btn va-btn-primary flex-shrink-0" id="btnSaveThreshold">Save</button>
       </form>
       <div id="thresholdFeedback" class="small mt-2" role="status"></div>
+    </div>
+  </div>
 
-      <div class="row g-2 mt-3 pt-2 border-top border-light">
+  <!-- Microclimate Thermal Spread & Station Status -->
+  <div class="col-12 col-lg-6">
+    <div class="va-card h-100">
+      <div class="va-card-header">
+        <h3 class="va-card-title">Environmental Intelligence</h3>
+        <span class="badge bg-info bg-opacity-10 text-cyan" style="color: #0284c7;">Telemetry Analysis</span>
+      </div>
+      <p class="text-muted small">
+        Real-time microclimate amplitude analysis calculated across the active sensor time window.
+      </p>
+      <div class="row g-2 mt-2">
         <div class="col-6">
           <div class="p-2 rounded bg-light border border-light small">
-            <span class="text-muted d-block text-uppercase" style="font-size: 10px;">Thermal Spread</span>
+            <span class="text-muted d-block text-uppercase" style="font-size: 10px;">Thermal Amplitude</span>
             <strong class="text-dark fs-6" id="summaryThermalAmplitude">-- °C</strong>
           </div>
         </div>
@@ -319,13 +392,12 @@
           </div>
         </div>
       </div>
-      <div class="text-muted small mt-2">
+      <div class="text-muted small mt-3">
         <em>Calculated Heat Index derived via NOAA Rothfusz formula to distinguish apparent thermal stress from physical sensor temperature.</em>
       </div>
     </div>
   </div>
 </div>
-
 <!-- Section 6: Recent Sensor Telemetry Table Section -->
 <div class="va-card">
   <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">

@@ -56,51 +56,154 @@
   </form>
 </div>
 
-<!-- Aggregated Statistics Row -->
+<!-- Aggregated Overview Statistics Row -->
 <div class="row g-3 mb-4">
   <div class="col-6 col-lg-3">
-    <div class="va-card text-center py-3">
+    <div class="va-card text-center py-3 h-100">
       <div class="text-secondary small text-uppercase">Sample Count</div>
-      <div class="fs-3 fw-bold text-white mt-1" id="statSampleCount">--</div>
+      <div class="fs-3 fw-bold text-dark mt-1" id="statSampleCount">--</div>
       <div class="small text-muted"><span id="statDataIntegrity" class="text-success fw-semibold">100%</span> valid</div>
     </div>
   </div>
   <div class="col-6 col-lg-3">
-    <div class="va-card text-center py-3">
+    <div class="va-card text-center py-3 h-100">
       <div class="text-secondary small text-uppercase">Temperature Range</div>
-      <div class="fs-4 fw-bold text-cyan mt-1" id="statTempRange">-- / -- °C</div>
+      <div class="fs-4 fw-bold mt-1" style="color: #dc2626;" id="statTempRange">-- / -- °C</div>
       <div class="small text-muted" id="statTempAvg">Avg: -- °C</div>
     </div>
   </div>
   <div class="col-6 col-lg-3">
-    <div class="va-card text-center py-3">
+    <div class="va-card text-center py-3 h-100">
       <div class="text-secondary small text-uppercase">Humidity Range</div>
-      <div class="fs-4 fw-bold text-cyan mt-1" id="statHumRange">-- / -- %</div>
+      <div class="fs-4 fw-bold mt-1" style="color: #0284c7;" id="statHumRange">-- / -- %</div>
       <div class="small text-muted" id="statHumAvg">Avg: -- %</div>
     </div>
   </div>
   <div class="col-6 col-lg-3">
-    <div class="va-card text-center py-3">
+    <div class="va-card text-center py-3 h-100">
       <div class="text-secondary small text-uppercase">Pressure Range</div>
-      <div class="fs-4 fw-bold text-cyan mt-1" id="statPressRange">-- / -- hPa</div>
+      <div class="fs-4 fw-bold mt-1" style="color: #8b5cf6;" id="statPressRange">-- / -- hPa</div>
       <div class="small text-muted" id="statPressAvg">Avg: -- hPa</div>
     </div>
   </div>
 </div>
 
-<!-- Historical Chart -->
-<div class="va-card mb-4 position-relative">
-  <div class="chart-header">
-    <h3 class="va-card-title m-0">Historical Environmental Trajectory</h3>
-    <span class="text-secondary small" id="chartRangeLabel">Showing selected range</span>
+<!-- Historical Environmental Trajectory Charts Grid -->
+<div class="chart-card-sunset mb-4">
+  <div class="chart-card-header d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+    <div>
+      <h3 class="chart-card-title m-0">Historical Environmental Trajectory</h3>
+      <div class="chart-card-sub" id="chartRangeLabel">Showing selected range • Downsampled with peak preservation</div>
+    </div>
+    <!-- Interactive Series Toggles -->
+    <div class="sunset-chart-legend d-flex align-items-center gap-2" id="historyLegendToggles" role="group" aria-label="History series toggles">
+      <span class="legend-item" data-target="temp" title="Toggle Temperature Chart"><span class="legend-dot temp-dot"></span> Temp (°C)</span>
+      <span class="legend-item" data-target="hum" title="Toggle Humidity Chart"><span class="legend-dot hum-dot"></span> Humidity (%)</span>
+      <span class="legend-item" data-target="heat" title="Toggle Heat Index Chart"><span class="legend-dot heat-dot"></span> Heat Index (°C)</span>
+      <span class="legend-item" data-target="press" title="Toggle Pressure Chart"><span class="legend-dot press-dot"></span> Pressure (hPa)</span>
+    </div>
   </div>
-  <div class="chart-box" style="height: 340px; position: relative;">
-    <canvas id="historyChart"></canvas>
-    <div id="historyChartEmptyOverlay" class="chart-empty-overlay" style="display: none;">
-      <div class="text-center p-3">
-        <div class="empty-icon mb-2">📊</div>
-        <div class="empty-title fw-bold">No readings available yet</div>
-        <div class="empty-sub text-muted small">Real sensor readings will automatically graph here once recorded.</div>
+
+  <div class="row g-3">
+    <!-- Chart 1: Temperature History -->
+    <div class="col-12 col-lg-6" id="histCardTempWrapper">
+      <div class="p-3 rounded border border-light bg-light bg-opacity-25 h-100 d-flex flex-column">
+        <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-1">
+          <div>
+            <span class="fw-bold text-dark fs-6">Ambient Temperature History</span>
+            <span class="badge bg-danger bg-opacity-10 text-danger ms-2" style="font-size: 11px;">°C</span>
+          </div>
+          <span class="chart-badge success" id="histTempAlertBadge">Safe Range</span>
+        </div>
+        <div class="chart-box-sunset flex-grow-1" style="position: relative; height: 240px;">
+          <canvas id="historyChart" aria-label="Historical temperature line chart"></canvas>
+          <div id="historyChartEmptyOverlay" class="chart-empty-overlay" style="display: none;">
+            <div class="chart-empty-icon" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+            </div>
+            <div class="chart-empty-title">No readings available yet</div>
+            <div class="chart-empty-sub">Real sensor readings will automatically graph here once recorded.</div>
+          </div>
+        </div>
+        <div id="histTempStatsBar" class="mt-2"></div>
+      </div>
+    </div>
+
+    <!-- Chart 2: Humidity History -->
+    <div class="col-12 col-lg-6" id="histCardHumWrapper">
+      <div class="p-3 rounded border border-light bg-light bg-opacity-25 h-100 d-flex flex-column">
+        <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-1">
+          <div>
+            <span class="fw-bold text-dark fs-6">Relative Humidity History</span>
+            <span class="badge bg-info bg-opacity-10 text-cyan ms-2" style="font-size: 11px; color: #0284c7;">0–100% RH</span>
+          </div>
+          <span class="badge bg-secondary bg-opacity-10 text-muted" style="font-size: 11px;">DHT11 Hygrometer</span>
+        </div>
+        <div class="chart-box-sunset flex-grow-1" style="position: relative; height: 240px;">
+          <canvas id="historyHumChart" aria-label="Historical humidity line chart"></canvas>
+          <div id="historyHumEmptyOverlay" class="chart-empty-overlay d-none">
+            <div class="chart-empty-icon" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+            </div>
+            <div class="chart-empty-title">No Humidity Records</div>
+            <div class="chart-empty-sub">No relative humidity measurements recorded for this range.</div>
+          </div>
+        </div>
+        <div id="histHumStatsBar" class="mt-2"></div>
+      </div>
+    </div>
+
+    <!-- Chart 3: Calculated Heat Index History -->
+    <div class="col-12 col-lg-6" id="histCardHeatWrapper">
+      <div class="p-3 rounded border border-light bg-light bg-opacity-25 h-100 d-flex flex-column">
+        <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-1">
+          <div>
+            <span class="fw-bold text-dark fs-6">Calculated Heat Index History</span>
+            <span class="badge bg-warning bg-opacity-10 ms-2" style="font-size: 11px; color: #ea580c;">NOAA Rothfusz</span>
+          </div>
+          <span class="chart-badge warning" id="histHeatRiskBadge">Normal Comfort</span>
+        </div>
+        <div class="text-muted small mb-1" style="font-size: 11px;">
+          <em>Calculated apparent thermal comfort based on NOAA Rothfusz formula &bull; Not directly measured</em>
+        </div>
+        <div class="chart-box-sunset flex-grow-1" style="position: relative; height: 220px;">
+          <canvas id="historyHeatChart" aria-label="Historical heat index chart"></canvas>
+          <div id="historyHeatEmptyOverlay" class="chart-empty-overlay d-none">
+            <div class="chart-empty-icon" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+            </div>
+            <div class="chart-empty-title">Conditions Below Stress Threshold</div>
+            <div class="chart-empty-sub">Heat Index calculated only when Temp &ge; 26.7°C (80°F) and RH &ge; 40%. Ambient readings for this range were below threshold.</div>
+          </div>
+        </div>
+        <div id="histHeatStatsBar" class="mt-2"></div>
+      </div>
+    </div>
+
+    <!-- Chart 4: Atmospheric Pressure History -->
+    <div class="col-12 col-lg-6" id="histCardPressWrapper">
+      <div class="p-3 rounded border border-light bg-light bg-opacity-25 h-100 d-flex flex-column">
+        <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-1">
+          <div>
+            <span class="fw-bold text-dark fs-6">Atmospheric Pressure History</span>
+            <span class="badge bg-secondary bg-opacity-10 text-muted ms-2" style="font-size: 11px;">hPa</span>
+          </div>
+          <span class="chart-badge secondary" id="histPressStatusBadge">BMP280 Barometer</span>
+        </div>
+        <div class="text-muted small mb-1" style="font-size: 11px;">
+          <em>Real physical barometric measurements from Bosch BMP280 sensor</em>
+        </div>
+        <div class="chart-box-sunset flex-grow-1" style="position: relative; height: 220px;">
+          <canvas id="historyPressChart" aria-label="Historical atmospheric pressure chart"></canvas>
+          <div id="historyPressEmptyOverlay" class="chart-empty-overlay d-none">
+            <div class="chart-empty-icon" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+            </div>
+            <div class="chart-empty-title" id="histPressEmptyTitle">Pressure Sensor Unavailable</div>
+            <div class="chart-empty-sub" id="histPressEmptySub">No pressure readings recorded for this interval. Physical BMP280 sensor is disconnected or DHT11 pipeline is active.</div>
+          </div>
+        </div>
+        <div id="histPressStatsBar" class="mt-2"></div>
       </div>
     </div>
   </div>
@@ -115,7 +218,7 @@
     </div>
     <div class="d-flex align-items-center gap-2">
       <label class="text-secondary small" for="pageSizeSelect">Per page:</label>
-      <select id="pageSizeSelect" class="va-select py-1 px-2 text-white">
+      <select id="pageSizeSelect" class="va-select py-1 px-2 text-dark border-light">
         <option value="25" selected>25</option>
         <option value="50">50</option>
         <option value="100">100</option>
@@ -158,5 +261,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/history.js') }}"></script>
+<script src="{{ url_for('static', filename='js/history.js', v=ASSET_VERSION) }}"></script>
 {% endblock %}

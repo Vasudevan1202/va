@@ -713,35 +713,111 @@ def create_app(test_config=None) -> Flask:
         Retrieves chronological readings for chart display.
         Query parameters:
         - range: '1h', '6h', '24h' (default), '7d', '30d'
+        - start: optional ISO 8601 start timestamp
+        - end: optional ISO 8601 end timestamp
         """
         time_range = request.args.get("range", "24h").strip().lower()
         if time_range not in ["1h", "6h", "24h", "7d", "30d"]:
             time_range = "24h"
 
-        real_only = Config.is_production_mode() or request.args.get("real_only", "0").strip().lower() in ("1", "true")
-        readings = database.get_readings_range(range_code=time_range, db_path=db_path, real_only=real_only)
+        start_iso = request.args.get("start", "").strip() or None
+        end_iso = request.args.get("end", "").strip() or None
 
-        # Calculate time-range specific summary
+        real_only = Config.is_production_mode() or request.args.get("real_only", "0").strip().lower() in ("1", "true")
+        readings = database.get_readings_range(
+            range_code=time_range,
+            start_iso=start_iso,
+            end_iso=end_iso,
+            db_path=db_path,
+            real_only=real_only
+        )
+
+        # Calculate exact time-range specific summary from 100% of raw valid database readings
         temps = [r["temperature_c"] for r in readings if r.get("temperature_c") is not None]
         pressures = [r["pressure_hpa"] for r in readings if r.get("pressure_hpa") is not None]
         humidities = [r["humidity_pct"] for r in readings if r.get("humidity_pct") is not None]
+        heat_indices = [r["heat_index_c"] for r in readings if r.get("heat_index_c") is not None]
+
+        # Latest valid readings and timestamps
+        latest_temp = None
+        latest_temp_time = None
+        for r in reversed(readings):
+            if r.get("temperature_c") is not None:
+                latest_temp = r["temperature_c"]
+                latest_temp_time = r.get("timestamp")
+                break
+
+        latest_hum = None
+        latest_hum_time = None
+        for r in reversed(readings):
+            if r.get("humidity_pct") is not None:
+                latest_hum = r["humidity_pct"]
+                latest_hum_time = r.get("timestamp")
+                break
+
+        latest_press = None
+        latest_press_time = None
+        for r in reversed(readings):
+            if r.get("pressure_hpa") is not None:
+                latest_press = r["pressure_hpa"]
+                latest_press_time = r.get("timestamp")
+                break
+
+        latest_heat = None
+        latest_heat_time = None
+        for r in reversed(readings):
+            if r.get("heat_index_c") is not None:
+                latest_heat = r["heat_index_c"]
+                latest_heat_time = r.get("timestamp")
+                break
+
+        settings = database.get_settings(db_path=db_path)
+        threshold_c = settings.get("temperature_threshold_c", Config.DEFAULT_TEMPERATURE_THRESHOLD_C)
+        exceeded_count = sum(1 for t in temps if t >= threshold_c)
 
         summary = {
             "count": len(readings),
-            "range": time_range,
+            "range": "custom" if (start_iso or end_iso) else time_range,
+            "threshold_c": threshold_c,
+            "exceeded_count": exceeded_count,
+            # Temperature
+            "temp_latest": latest_temp,
+            "temp_latest_time": latest_temp_time,
             "temp_min": min(temps) if temps else None,
             "temp_max": max(temps) if temps else None,
             "temp_avg": round(sum(temps) / len(temps), 2) if temps else None,
+            "temp_count": len(temps),
+            # Pressure
+            "press_latest": latest_press,
+            "press_latest_time": latest_press_time,
             "press_min": min(pressures) if pressures else None,
             "press_max": max(pressures) if pressures else None,
             "press_avg": round(sum(pressures) / len(pressures), 2) if pressures else None,
+            "press_count": len(pressures),
+            "press_available": len(pressures) > 0,
+            # Humidity
+            "hum_latest": latest_hum,
+            "hum_latest_time": latest_hum_time,
             "hum_min": min(humidities) if humidities else None,
             "hum_max": max(humidities) if humidities else None,
-            "hum_avg": round(sum(humidities) / len(humidities), 1) if humidities else None
+            "hum_avg": round(sum(humidities) / len(humidities), 1) if humidities else None,
+            "hum_count": len(humidities),
+            # Heat index
+            "heat_latest": latest_heat,
+            "heat_latest_time": latest_heat_time,
+            "heat_min": min(heat_indices) if heat_indices else None,
+            "heat_max": max(heat_indices) if heat_indices else None,
+            "heat_avg": round(sum(heat_indices) / len(heat_indices), 1) if heat_indices else None,
+            "heat_count": len(heat_indices)
         }
 
+        # Apply peak-preserving and threshold-preserving downsampling for responsive charting
+        chart_readings = database.downsample_readings(readings, max_points=400, threshold_c=threshold_c)
+
         return jsonify({
-            "readings": readings,
+            "readings": chart_readings,
+            "total_count": len(readings),
+            "is_downsampled": len(chart_readings) < len(readings),
             "summary": summary
         }), 200
 

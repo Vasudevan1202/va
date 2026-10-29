@@ -1,292 +1,87 @@
 /**
- * Virtual Atmosphere (VA) - Sunset Warm Overview Dashboard Controller
- * Dual-Series Temperature & Humidity Microclimate Visualization
- * Turso libSQL Cloud Persistence & Honest Sensor Connectivity Reporting
+ * Virtual Atmosphere (VA) - Professional Environmental Dashboard Controller
+ * 4 Dedicated Measurement Charts: Temperature, Humidity, Heat Index, Pressure
+ * Clean Responsive Layout, Monotone Interpolation, Honest Gap & Offline Reporting
  */
 
 (function () {
   "use strict";
 
-  let tempHumChart = null;
+  let tempChart = null;
+  let humChart = null;
+  let heatChart = null;
   let pressChart = null;
-  let currentRange = "24h";
-  let currentPressRange = "24h";
-  let autoRefreshTimer = null;
 
-  // Chart configuration constants for Sunset Warm Theme (WCAG AA compliant contrast)
-  const SUNSET_CHART_DEFAULTS = {
-    responsive: true,
-    maintainAspectRatio: false,
-    animation: { duration: 400 },
-    interaction: {
-      mode: "index",
-      intersect: false
-    },
-    plugins: {
-      legend: { display: false }, // Rendered via reference-matching header legend
-      tooltip: {
-        backgroundColor: "rgba(255, 255, 255, 0.96)",
-        titleColor: "#1f1412",
-        bodyColor: "#5a463e",
-        borderColor: "rgba(230, 210, 195, 0.9)",
-        borderWidth: 1,
-        padding: 10,
-        boxPadding: 4,
-        usePointStyle: true,
-        callbacks: {
-          title: function (items) {
-            if (!items.length) return "";
-            const rawTime = items[0].label;
-            return "Time: " + rawTime;
-          }
-        }
-      }
-    },
-    scales: {
-      x: {
-        grid: { color: "rgba(225, 200, 180, 0.3)" },
-        ticks: {
-          color: "#736259",
-          maxTicksLimit: 7,
-          font: { size: 11, family: "'Inter', sans-serif", weight: "500" }
-        }
-      },
-      y: {
-        grid: { color: "rgba(225, 200, 180, 0.3)" },
-        ticks: {
-          color: "#736259",
-          font: { size: 11, family: "'Inter', sans-serif", weight: "500" }
-        }
-      }
-    }
-  };
+  let currentRange = "24h";
+  let currentThresholdC = 35.0;
+  let isFetchingCharts = false;
 
   /**
-   * Initializes the dual-series Temperature & Humidity line chart and Barometric Pressure chart.
+   * Initializes all four separated environmental monitoring charts.
    */
   function initCharts() {
-    const tempCtx = document.getElementById("temperatureChart");
-    if (tempCtx) {
-      tempHumChart = new Chart(tempCtx, {
-        type: "line",
-        data: {
-          labels: [],
-          datasets: [
-            {
-              label: "Temperature (°C)",
-              data: [],
-              borderColor: "#dc2626",
-              backgroundColor: "rgba(220, 38, 38, 0.10)",
-              borderWidth: 3,
-              tension: 0.35,
-              fill: false,
-              pointRadius: 3,
-              pointHoverRadius: 6,
-              pointBackgroundColor: "#dc2626",
-              pointBorderColor: "#ffffff",
-              pointBorderWidth: 1.5,
-              yAxisID: "yTemp"
-            },
-            {
-              label: "Relative Humidity (%)",
-              data: [],
-              borderColor: "#0284c7",
-              backgroundColor: "rgba(2, 132, 199, 0.08)",
-              borderWidth: 3,
-              tension: 0.35,
-              fill: false,
-              pointRadius: 3,
-              pointHoverRadius: 6,
-              pointBackgroundColor: "#0284c7",
-              pointBorderColor: "#ffffff",
-              pointBorderWidth: 1.5,
-              yAxisID: "yHum"
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          animation: { duration: 350 },
-          interaction: { mode: "index", intersect: false },
-          layout: {
-            padding: { top: 12, right: 16, bottom: 8, left: 8 }
-          },
-          plugins: {
-            legend: { display: false },
-            tooltip: {
-              backgroundColor: "rgba(255, 255, 255, 0.98)",
-              titleColor: "#1f1412",
-              bodyColor: "#5a463e",
-              borderColor: "rgba(230, 210, 195, 0.95)",
-              borderWidth: 1.5,
-              padding: 12,
-              boxPadding: 6,
-              usePointStyle: true,
-              titleFont: { size: 13, weight: "700", family: "'Inter', sans-serif" },
-              bodyFont: { size: 13, weight: "600", family: "'Inter', sans-serif" },
-              callbacks: {
-                title: function (items) {
-                  return items.length ? "Timestamp: " + items[0].label : "";
-                },
-                label: function (ctx) {
-                  if (ctx.parsed.y === null || ctx.parsed.y === undefined) {
-                    return `${ctx.dataset.label}: --`;
-                  }
-                  if (ctx.dataset.yAxisID === "yTemp") {
-                    return `Temperature: ${ctx.parsed.y.toFixed(1)} °C`;
-                  } else if (ctx.dataset.yAxisID === "yHum") {
-                    return `Relative Humidity: ${ctx.parsed.y.toFixed(0)}%`;
-                  }
-                  return `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)}`;
-                }
-              }
-            }
-          },
-          scales: {
-            x: {
-              title: {
-                display: true,
-                text: "Time",
-                color: "#5a463e",
-                font: { size: 13, weight: "700", family: "'Inter', sans-serif" },
-                padding: { top: 6 }
-              },
-              grid: { color: "rgba(225, 200, 180, 0.35)" },
-              ticks: {
-                color: "#5a463e",
-                maxTicksLimit: 8,
-                font: { size: 12, weight: "600", family: "'Inter', sans-serif" }
-              }
-            },
-            yTemp: {
-              type: "linear",
-              position: "left",
-              title: {
-                display: true,
-                text: "Temperature (°C)",
-                color: "#dc2626",
-                font: { size: 13, weight: "700", family: "'Inter', sans-serif" }
-              },
-              grid: { color: "rgba(225, 200, 180, 0.35)" },
-              ticks: {
-                color: "#dc2626",
-                font: { size: 12, weight: "600", family: "'Inter', sans-serif" },
-                callback: function (val) { return val + " °C"; }
-              },
-              suggestedMin: 15,
-              suggestedMax: 45
-            },
-            yHum: {
-              type: "linear",
-              position: "right",
-              title: {
-                display: true,
-                text: "Relative Humidity (%)",
-                color: "#0284c7",
-                font: { size: 13, weight: "700", family: "'Inter', sans-serif" }
-              },
-              grid: { drawOnChartArea: false },
-              ticks: {
-                color: "#0284c7",
-                font: { size: 12, weight: "600", family: "'Inter', sans-serif" },
-                callback: function (val) { return val + "%"; }
-              },
-              min: 0,
-              max: 100
-            }
-          }
-        }
-      });
+    if (!window.VACharts) {
+      console.error("VACharts library not loaded.");
+      return;
     }
 
-    // Secondary: Atmospheric Pressure Chart
-    const pressCtx = document.getElementById("pressureChart");
-    if (pressCtx) {
-      pressChart = new Chart(pressCtx, {
-        type: "line",
-        data: {
-          labels: [],
-          datasets: [{
-            label: "Pressure (hPa)",
-            data: [],
-            borderColor: "#ea580c",
-            backgroundColor: "rgba(234, 88, 12, 0.12)",
-            borderWidth: 3,
-            tension: 0.35,
-            fill: true,
-            pointRadius: 2,
-            pointHoverRadius: 6,
-            pointBackgroundColor: "#ea580c"
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          animation: { duration: 350 },
-          interaction: { mode: "index", intersect: false },
-          layout: {
-            padding: { top: 12, right: 16, bottom: 8, left: 8 }
-          },
-          plugins: {
-            legend: { display: false },
-            tooltip: {
-              backgroundColor: "rgba(255, 255, 255, 0.98)",
-              titleColor: "#1f1412",
-              bodyColor: "#5a463e",
-              borderColor: "rgba(230, 210, 195, 0.95)",
-              borderWidth: 1.5,
-              padding: 12,
-              titleFont: { size: 13, weight: "700", family: "'Inter', sans-serif" },
-              bodyFont: { size: 13, weight: "600", family: "'Inter', sans-serif" },
-              callbacks: {
-                title: function (items) {
-                  return items.length ? "Timestamp: " + items[0].label : "";
-                },
-                label: function (ctx) {
-                  return `Pressure: ${ctx.parsed.y !== null ? ctx.parsed.y.toFixed(1) : '--'} hPa`;
-                }
-              }
-            }
-          },
-          scales: {
-            x: {
-              title: {
-                display: true,
-                text: "Time",
-                color: "#5a463e",
-                font: { size: 13, weight: "700", family: "'Inter', sans-serif" },
-                padding: { top: 6 }
-              },
-              grid: { color: "rgba(225, 200, 180, 0.35)" },
-              ticks: {
-                color: "#5a463e",
-                maxTicksLimit: 8,
-                font: { size: 12, weight: "600", family: "'Inter', sans-serif" }
-              }
-            },
-            y: {
-              title: {
-                display: true,
-                text: "Atmospheric Pressure (hPa)",
-                color: "#ea580c",
-                font: { size: 13, weight: "700", family: "'Inter', sans-serif" }
-              },
-              grid: { color: "rgba(225, 200, 180, 0.35)" },
-              ticks: {
-                color: "#ea580c",
-                font: { size: 12, weight: "600", family: "'Inter', sans-serif" },
-                callback: function (val) { return val + " hPa"; }
-              }
-            }
-          }
-        }
+    // 1. Ambient Temperature Chart
+    const tempCanvas = document.getElementById("temperatureChart");
+    if (tempCanvas) {
+      const tempCfg = window.VACharts.buildChartConfig({
+        type: "temp",
+        label: "Ambient Temperature",
+        unit: "°C",
+        suggestedMin: 15,
+        suggestedMax: 45,
+        thresholdVal: currentThresholdC
       });
+      tempChart = new Chart(tempCanvas, tempCfg);
+    }
+
+    // 2. Relative Humidity Chart
+    const humCanvas = document.getElementById("humidityChart");
+    if (humCanvas) {
+      const humCfg = window.VACharts.buildChartConfig({
+        type: "hum",
+        label: "Relative Humidity",
+        unit: "%",
+        yMin: 0,
+        yMax: 100
+      });
+      humChart = new Chart(humCanvas, humCfg);
+    }
+
+    // 3. Calculated Heat Index Chart
+    const heatCanvas = document.getElementById("heatIndexChart");
+    if (heatCanvas) {
+      const heatCfg = window.VACharts.buildChartConfig({
+        type: "heat",
+        label: "Calculated Heat Index",
+        unit: "°C",
+        suggestedMin: 20,
+        suggestedMax: 50,
+        isDashed: false
+      });
+      heatChart = new Chart(heatCanvas, heatCfg);
+    }
+
+    // 4. Atmospheric Pressure Chart
+    const pressCanvas = document.getElementById("pressureChart");
+    if (pressCanvas) {
+      const pressCfg = window.VACharts.buildChartConfig({
+        type: "press",
+        label: "Atmospheric Pressure",
+        unit: "hPa",
+        suggestedMin: 980,
+        suggestedMax: 1035
+      });
+      pressChart = new Chart(pressCanvas, pressCfg);
     }
   }
 
   /**
-   * Fetches latest telemetry and updates cards, condition badges, and honest sensor status.
+   * Fetches latest telemetry status and updates cards, condition badges, and honest connectivity.
    */
   async function fetchLatestData() {
     try {
@@ -301,11 +96,10 @@
   }
 
   /**
-   * Updates all metrics, status indicators, and station diagnostic panels with incoming data.
+   * Updates all metrics, condition cards, status indicators, and station diagnostics.
    */
   function updateDashboardUI(data) {
     const latest = data.latest;
-    const previous = data.previous;
     const trend = data.trend || {};
     const today = data.today_stats || {};
     const alertInfo = data.alert || {};
@@ -320,6 +114,15 @@
     const sidebarTitle = document.getElementById("sidebarStatusTitle");
     const sidebarSub = document.getElementById("sidebarStatusSub");
 
+    // Sync safety threshold
+    if (alertInfo.threshold_c !== undefined) {
+      currentThresholdC = Number(alertInfo.threshold_c);
+      const tThreshEl = document.getElementById("tempThresholdBadge");
+      if (tThreshEl) tThreshEl.textContent = `Threshold: ${currentThresholdC.toFixed(1)}°C`;
+      const inThresh = document.getElementById("inputThreshold");
+      if (inThresh) inThresh.value = currentThresholdC;
+    }
+
     // Honest Sensor Connectivity Evaluation
     const isLive = freshness.is_live === true;
     const isStale = freshness.is_stale === true;
@@ -328,7 +131,7 @@
     if (conditionsMeta) {
       if (hasData && latest.timestamp) {
         const d = new Date(latest.timestamp);
-        conditionsMeta.textContent = `Last updated: ${d.toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' })}, ${d.toLocaleTimeString([], { hour12: false })}`;
+        conditionsMeta.textContent = `Last updated: ${d.toLocaleDateString([], { day: "2-digit", month: "short", year: "numeric" })}, ${d.toLocaleTimeString([], { hour12: false })}`;
       } else {
         conditionsMeta.textContent = "Last updated: No real sensor records found";
       }
@@ -369,7 +172,7 @@
       if (!hasData) {
         tempStatusEl.textContent = "No Data";
         tempStatusEl.className = "card-metric-status text-muted";
-      } else if (alertInfo.has_active_alert || (latest.temperature_c >= (alertInfo.threshold_c || 35.0))) {
+      } else if (alertInfo.has_active_alert || (latest.temperature_c >= currentThresholdC)) {
         tempStatusEl.textContent = "High";
         tempStatusEl.className = "card-metric-status text-danger fw-bold";
       } else {
@@ -435,27 +238,7 @@
       }
     }
 
-    // Barometric Pressure Card
-    const pressValEl = document.getElementById("cardPressVal");
-    const pressTrendBadge = document.getElementById("pressTrendBadge");
-    const pressTrendVal = document.getElementById("pressTrendVal");
-    if (pressValEl) {
-      pressValEl.textContent = hasData && latest.pressure_hpa !== null && latest.pressure_hpa !== undefined ? Number(latest.pressure_hpa).toFixed(1) : "----.-";
-    }
-    if (pressTrendVal && trend.pressure_delta_hpa !== undefined) {
-      pressTrendVal.textContent = Math.abs(trend.pressure_delta_hpa).toFixed(2);
-      if (pressTrendBadge) {
-        if (trend.pressure_delta_hpa > 0) {
-          pressTrendBadge.className = "trend-badge trend-up";
-        } else if (trend.pressure_delta_hpa < 0) {
-          pressTrendBadge.className = "trend-badge trend-down";
-        } else {
-          pressTrendBadge.className = "trend-badge trend-neutral";
-        }
-      }
-    }
-
-    // Today's Stats
+    // Today's Stats in Top Cards
     const tempMinEl = document.getElementById("tempMin");
     const tempAvgEl = document.getElementById("tempAvg");
     const tempMaxEl = document.getElementById("tempMax");
@@ -469,13 +252,6 @@
     if (humMinEl) humMinEl.textContent = today.min_humidity !== null && today.min_humidity !== undefined ? today.min_humidity.toFixed(0) + "%" : "--";
     if (humAvgEl) humAvgEl.textContent = today.avg_humidity !== null && today.avg_humidity !== undefined ? today.avg_humidity.toFixed(0) + "%" : "--";
     if (humMaxEl) humMaxEl.textContent = today.max_humidity !== null && today.max_humidity !== undefined ? today.max_humidity.toFixed(0) + "%" : "--";
-
-    const pressMinEl = document.getElementById("pressMin");
-    const pressAvgEl = document.getElementById("pressAvg");
-    const pressMaxEl = document.getElementById("pressMax");
-    if (pressMinEl) pressMinEl.textContent = today.min_pressure !== null && today.min_pressure !== undefined ? today.min_pressure.toFixed(1) : "--";
-    if (pressAvgEl) pressAvgEl.textContent = today.avg_pressure !== null && today.avg_pressure !== undefined ? today.avg_pressure.toFixed(1) : "--";
-    if (pressMaxEl) pressMaxEl.textContent = today.max_pressure !== null && today.max_pressure !== undefined ? today.max_pressure.toFixed(1) : "--";
 
     // Dedicated DHT11 Pipeline Card
     const dht = data.dht11 || (latest && (latest.sensor_type === "dht11" || (latest.source && latest.source.includes("dht11"))) ? latest : null);
@@ -522,21 +298,13 @@
       }
     }
 
-    // Today's count
+    // Today's sample count
     const countEl = document.getElementById("cardTodayCount");
     if (countEl) countEl.textContent = today.count || 0;
 
     const lastColEl = document.getElementById("cardLastCollectionTime");
     if (lastColEl && today.last_collection_time) {
       lastColEl.textContent = new Date(today.last_collection_time).toLocaleTimeString([], { hour12: false });
-    }
-
-    // Alert Threshold Form Sync
-    if (alertInfo.threshold_c !== undefined) {
-      const tThreshEl = document.getElementById("tempThresholdBadge");
-      if (tThreshEl) tThreshEl.textContent = `Threshold: ${Number(alertInfo.threshold_c).toFixed(1)}°C`;
-      const inThresh = document.getElementById("inputThreshold");
-      if (inThresh) inThresh.value = alertInfo.threshold_c;
     }
 
     // Global Alert Banner
@@ -569,73 +337,253 @@
   }
 
   /**
-   * Fetches chronological readings and renders the dual-series Temperature & Humidity line chart.
+   * Fetches chronological readings and updates all 4 separated environmental charts.
    */
   async function fetchChartData(range) {
-    const emptyOverlay = document.getElementById("tempChartEmptyOverlay");
+    if (isFetchingCharts) return;
+    isFetchingCharts = true;
+
+    const tempOverlay = document.getElementById("tempChartEmptyOverlay");
+    const humOverlay = document.getElementById("humChartEmptyOverlay");
+    const heatOverlay = document.getElementById("heatChartEmptyOverlay");
+    const pressOverlay = document.getElementById("pressChartEmptyOverlay");
+
     try {
       const res = await fetch(`/api/readings?range=${encodeURIComponent(range)}`);
       if (!res.ok) throw new Error("Failed to fetch range telemetry");
       const json = await res.json();
       const readings = json.readings || [];
+      const summary = json.summary || {};
+      const totalCount = json.total_count || readings.length;
 
-      if (readings.length === 0) {
-        if (emptyOverlay) emptyOverlay.classList.remove("d-none");
-        if (tempHumChart) {
-          tempHumChart.data.labels = [];
-          tempHumChart.data.datasets[0].data = [];
-          tempHumChart.data.datasets[1].data = [];
-          tempHumChart.update();
-        }
-        if (pressChart) {
-          pressChart.data.labels = [];
-          pressChart.data.datasets[0].data = [];
-          pressChart.update();
-        }
-        const summarySub = document.getElementById("combinedChartSummary");
-        if (summarySub) {
+      // Update Section Header Summary
+      const summarySub = document.getElementById("combinedChartSummary");
+      if (summarySub) {
+        if (totalCount === 0) {
           summarySub.textContent = `No real samples recorded in last ${range} • Awaiting incoming sensor telemetry`;
+        } else {
+          const downsampleNotice = json.is_downsampled ? ` (${readings.length} visible peaks/transitions)` : "";
+          summarySub.textContent = `${totalCount} source readings in last ${range}${downsampleNotice} • Turso / SQLite live pipeline`;
         }
+      }
+
+      // If entire dataset is empty
+      if (totalCount === 0 || readings.length === 0) {
+        if (tempOverlay) tempOverlay.classList.remove("d-none");
+        if (humOverlay) humOverlay.classList.remove("d-none");
+        if (heatOverlay) heatOverlay.classList.remove("d-none");
+        if (pressOverlay) pressOverlay.classList.remove("d-none");
+
+        if (tempChart) window.VACharts.updateChartData(tempChart, [], () => null, range, currentThresholdC);
+        if (humChart) window.VACharts.updateChartData(humChart, [], () => null, range);
+        if (heatChart) window.VACharts.updateChartData(heatChart, [], () => null, range);
+        if (pressChart) window.VACharts.updateChartData(pressChart, [], () => null, range);
+
+        // Clear stats bars
+        window.VACharts.updateChartStatsBar(document.getElementById("tempChartStatsBar"), { count: 0, unit: "°C" });
+        window.VACharts.updateChartStatsBar(document.getElementById("humChartStatsBar"), { count: 0, unit: "%" });
+        window.VACharts.updateChartStatsBar(document.getElementById("heatChartStatsBar"), { count: 0, unit: "°C" });
+        window.VACharts.updateChartStatsBar(document.getElementById("pressChartStatsBar"), { unavailable: true, unavailableMsg: "No pressure readings recorded." });
         return;
       }
 
-      if (emptyOverlay) emptyOverlay.classList.add("d-none");
-
-      // Format timestamps into clean, readable X-axis labels
-      const isMultiDay = (range === "7d" || range === "30d");
-      const labels = readings.map((r) => {
-        const d = new Date(r.timestamp);
-        if (isMultiDay) {
-          return `${d.toLocaleDateString([], { month: "short", day: "numeric" })} ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })}`;
+      // 1. Ambient Temperature Chart Update
+      if (tempChart) {
+        const tempReadingsCount = summary.temp_count || 0;
+        if (tempReadingsCount === 0) {
+          if (tempOverlay) tempOverlay.classList.remove("d-none");
+        } else {
+          if (tempOverlay) tempOverlay.classList.add("d-none");
         }
-        return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
-      });
 
-      const tempData = readings.map((r) => (r.temperature_c !== null ? Number(r.temperature_c) : null));
-      const humData = readings.map((r) => (r.humidity_pct !== null && r.humidity_pct !== undefined ? Number(r.humidity_pct) : null));
-      const pressData = readings.map((r) => (r.pressure_hpa !== null ? Number(r.pressure_hpa) : null));
+        window.VACharts.updateChartData(
+          tempChart,
+          readings,
+          (r) => r.temperature_c,
+          range,
+          summary.threshold_c || currentThresholdC
+        );
 
-      if (tempHumChart) {
-        tempHumChart.data.labels = labels;
-        tempHumChart.data.datasets[0].data = tempData;
-        tempHumChart.data.datasets[1].data = humData;
-        tempHumChart.update();
+        // Update Temperature Alert Exceedance Badge
+        const tempAlertBadge = document.getElementById("tempThresholdAlertBadge");
+        if (tempAlertBadge) {
+          const threshold = summary.threshold_c || currentThresholdC;
+          if (summary.exceeded_count && summary.exceeded_count > 0) {
+            tempAlertBadge.className = "chart-badge danger";
+            tempAlertBadge.textContent = `⚠️ Exceeded (${summary.exceeded_count} samples ≥ ${threshold.toFixed(1)}°C)`;
+          } else {
+            tempAlertBadge.className = "chart-badge success";
+            tempAlertBadge.textContent = `Normal Safe Range (< ${threshold.toFixed(1)}°C)`;
+          }
+        }
+
+        // Update Temperature Stats Bar
+        window.VACharts.updateChartStatsBar(document.getElementById("tempChartStatsBar"), {
+          latest: summary.temp_latest,
+          latestTime: summary.temp_latest_time,
+          min: summary.temp_min,
+          max: summary.temp_max,
+          avg: summary.temp_avg,
+          count: summary.temp_count,
+          unit: "°C"
+        });
       }
 
+      // 2. Relative Humidity Chart Update
+      if (humChart) {
+        const humCount = summary.hum_count || 0;
+        if (humCount === 0) {
+          if (humOverlay) humOverlay.classList.remove("d-none");
+        } else {
+          if (humOverlay) humOverlay.classList.add("d-none");
+        }
+
+        window.VACharts.updateChartData(
+          humChart,
+          readings,
+          (r) => r.humidity_pct,
+          range
+        );
+
+        // Update Humidity Stats Bar
+        window.VACharts.updateChartStatsBar(document.getElementById("humChartStatsBar"), {
+          latest: summary.hum_latest,
+          latestTime: summary.hum_latest_time,
+          min: summary.hum_min,
+          max: summary.hum_max,
+          avg: summary.hum_avg,
+          count: summary.hum_count,
+          unit: "%"
+        });
+      }
+
+      // 3. Calculated Heat Index Chart Update
+      if (heatChart) {
+        const heatCount = summary.heat_count || 0;
+        if (heatCount === 0) {
+          if (heatOverlay) heatOverlay.classList.remove("d-none");
+        } else {
+          if (heatOverlay) heatOverlay.classList.add("d-none");
+        }
+
+        window.VACharts.updateChartData(
+          heatChart,
+          readings,
+          (r) => r.heat_index_c,
+          range
+        );
+
+        // Update Heat Risk Category Badge
+        const heatBadge = document.getElementById("heatIndexRiskCategoryBadge");
+        if (heatBadge) {
+          if (summary.heat_latest !== null && summary.heat_latest !== undefined) {
+            if (summary.heat_latest >= 51.7) {
+              heatBadge.className = "chart-badge danger";
+              heatBadge.textContent = "Extreme Danger (≥ 51.7°C)";
+            } else if (summary.heat_latest >= 40.0) {
+              heatBadge.className = "chart-badge danger";
+              heatBadge.textContent = "Danger (40–51°C)";
+            } else if (summary.heat_latest >= 32.8) {
+              heatBadge.className = "chart-badge warning";
+              heatBadge.textContent = "Extreme Caution";
+            } else if (summary.heat_latest >= 26.7) {
+              heatBadge.className = "chart-badge warning";
+              heatBadge.textContent = "Caution";
+            } else {
+              heatBadge.className = "chart-badge success";
+              heatBadge.textContent = "Normal Comfort";
+            }
+          } else {
+            heatBadge.className = "chart-badge secondary";
+            heatBadge.textContent = "Below Stress Threshold";
+          }
+        }
+
+        // Update Heat Index Stats Bar
+        window.VACharts.updateChartStatsBar(document.getElementById("heatChartStatsBar"), {
+          latest: summary.heat_latest,
+          latestTime: summary.heat_latest_time,
+          min: summary.heat_min,
+          max: summary.heat_max,
+          avg: summary.heat_avg,
+          count: summary.heat_count,
+          unit: "°C"
+        });
+      }
+
+      // 4. Atmospheric Pressure Chart Update
       if (pressChart) {
-        pressChart.data.labels = labels;
-        pressChart.data.datasets[0].data = pressData;
-        pressChart.update();
+        const pressAvailable = summary.press_available === true && summary.press_count > 0;
+        const pressBadge = document.getElementById("pressureStatusBadge");
+
+        if (!pressAvailable) {
+          // Clean informative empty state explaining sensor is disconnected
+          if (pressOverlay) {
+            pressOverlay.classList.remove("d-none");
+            const pTitle = document.getElementById("pressChartEmptyTitle");
+            const pSub = document.getElementById("pressChartEmptySub");
+            if (pTitle) pTitle.textContent = "Barometric Pressure Sensor Unavailable";
+            if (pSub) pSub.textContent = "No pressure readings recorded. Physical BMP280 sensor is not connected or DHT11 hygrometer pipeline is active (DHT11 records temperature and humidity only).";
+          }
+          if (pressBadge) {
+            pressBadge.className = "chart-badge secondary";
+            pressBadge.textContent = "BMP280 Disconnected";
+          }
+          window.VACharts.updateChartData(pressChart, [], () => null, range);
+          window.VACharts.updateChartStatsBar(document.getElementById("pressChartStatsBar"), {
+            unavailable: true,
+            unavailableMsg: "No physical pressure readings recorded. BMP280 is disconnected."
+          });
+        } else {
+          if (pressOverlay) pressOverlay.classList.add("d-none");
+          if (pressBadge) {
+            pressBadge.className = "chart-badge success";
+            pressBadge.textContent = "BMP280 Connected";
+          }
+
+          window.VACharts.updateChartData(
+            pressChart,
+            readings,
+            (r) => r.pressure_hpa,
+            range
+          );
+
+          window.VACharts.updateChartStatsBar(document.getElementById("pressChartStatsBar"), {
+            latest: summary.press_latest,
+            latestTime: summary.press_latest_time,
+            min: summary.press_min,
+            max: summary.press_max,
+            avg: summary.press_avg,
+            count: summary.press_count,
+            unit: "hPa"
+          });
+        }
       }
 
-      // Update Summary Subtext
-      const summarySub = document.getElementById("combinedChartSummary");
-      if (summarySub && json.summary) {
-        summarySub.textContent = `${readings.length} real samples recorded in last ${range} • Turso / SQLite telemetry pipeline`;
+      // Update Microclimate Analysis in Section 5
+      const ampEl = document.getElementById("summaryThermalAmplitude");
+      const baroDeltaEl = document.getElementById("summaryBaroDelta");
+      if (ampEl) {
+        if (summary.temp_min !== null && summary.temp_max !== null) {
+          const spread = Math.abs(summary.temp_max - summary.temp_min).toFixed(1);
+          ampEl.textContent = `${spread} °C`;
+        } else {
+          ampEl.textContent = "-- °C";
+        }
+      }
+      if (baroDeltaEl) {
+        if (summary.press_min !== null && summary.press_max !== null) {
+          const delta = Math.abs(summary.press_max - summary.press_min).toFixed(1);
+          baroDeltaEl.textContent = `${delta} hPa`;
+        } else {
+          baroDeltaEl.textContent = "-- hPa";
+        }
       }
     } catch (e) {
       console.warn("Could not refresh charts:", e);
-      if (emptyOverlay) emptyOverlay.classList.remove("d-none");
+      if (tempOverlay) tempOverlay.classList.remove("d-none");
+    } finally {
+      isFetchingCharts = false;
     }
   }
 
@@ -661,13 +609,13 @@
         const timeStr = `${d.toLocaleDateString([], { month: "short", day: "numeric" })} ${d.toLocaleTimeString([], { hour12: false })}`;
         const tVal = r.temperature_c !== null ? Number(r.temperature_c).toFixed(1) + " °C" : "--";
         const hVal = r.humidity_pct !== null && r.humidity_pct !== undefined ? Number(r.humidity_pct).toFixed(0) + " %" : "--";
-        const pVal = r.pressure_hpa !== null ? Number(r.pressure_hpa).toFixed(1) + " hPa" : "--";
-        const hiVal = r.heat_index_c !== null && r.heat_index_c !== undefined ? Number(r.heat_index_c).toFixed(1) + " °C" : "--";
-        const srcBadge = r.source && r.source.includes("dht11") ? `<span class="badge bg-success bg-opacity-10 text-success">${r.source}</span>` : `<span class="badge bg-light text-muted">${r.source || 'sensor'}</span>`;
+        const pVal = r.pressure_hpa !== null ? Number(r.pressure_hpa).toFixed(1) + " hPa" : '<span class="text-muted">–</span>';
+        const hiVal = r.heat_index_c !== null && r.heat_index_c !== undefined ? Number(r.heat_index_c).toFixed(1) + " °C" : '<span class="text-muted">–</span>';
+        const srcBadge = r.source && r.source.includes("dht11") ? `<span class="badge bg-success bg-opacity-10 text-success">${r.source}</span>` : `<span class="badge bg-light text-muted">${r.source || "sensor"}</span>`;
         return `
           <tr>
             <td><strong>${timeStr}</strong></td>
-            <td style="color: #ef4444; font-weight: 600;">${tVal}</td>
+            <td style="color: #dc2626; font-weight: 600;">${tVal}</td>
             <td style="color: #0284c7; font-weight: 600;">${hVal}</td>
             <td>${pVal}</td>
             <td style="color: #ea580c;">${hiVal}</td>
@@ -683,7 +631,7 @@
 
   // Setup Event Listeners
   function setupListeners() {
-    // Range selector buttons for Combined Chart
+    // Range selector buttons
     const rangeBtns = document.querySelectorAll("#tempRangeSelector button");
     rangeBtns.forEach((btn) => {
       btn.addEventListener("click", function () {
@@ -694,14 +642,21 @@
       });
     });
 
-    // Range selector for Pressure Chart
-    const pressBtns = document.querySelectorAll("#pressRangeSelector button");
-    pressBtns.forEach((btn) => {
-      btn.addEventListener("click", function () {
-        pressBtns.forEach((b) => b.classList.remove("active"));
-        this.classList.add("active");
-        currentPressRange = this.getAttribute("data-range") || "24h";
-        fetchChartData(currentPressRange);
+    // Interactive Clickable Legend Toggles
+    const legendToggles = document.querySelectorAll("#dashboardLegendToggles .legend-item");
+    legendToggles.forEach((item) => {
+      item.addEventListener("click", function () {
+        const target = this.getAttribute("data-target");
+        let wrapper = null;
+        if (target === "temp") wrapper = document.getElementById("cardChartTempWrapper");
+        if (target === "hum") wrapper = document.getElementById("cardChartHumWrapper");
+        if (target === "heat") wrapper = document.getElementById("cardChartHeatWrapper");
+        if (target === "press") wrapper = document.getElementById("cardChartPressWrapper");
+
+        if (wrapper) {
+          const isHidden = wrapper.classList.toggle("d-none");
+          this.classList.toggle("dimmed", isHidden);
+        }
       });
     });
 
@@ -742,11 +697,13 @@
           });
           const resData = await res.json();
           if (res.ok && resData.success) {
+            currentThresholdC = val;
             if (feedback) feedback.innerHTML = `<span class="text-success fw-semibold">Threshold updated to ${val.toFixed(1)}°C</span>`;
             setTimeout(() => { if (feedback) feedback.innerHTML = ""; }, 4000);
             fetchLatestData();
+            fetchChartData(currentRange);
           } else {
-            if (feedback) feedback.innerHTML = `<span class="text-danger">${resData.error || 'Failed to update threshold'}</span>`;
+            if (feedback) feedback.innerHTML = `<span class="text-danger">${resData.error || "Failed to update threshold"}</span>`;
           }
         } catch (err) {
           if (feedback) feedback.innerHTML = `<span class="text-danger">Network error saving threshold.</span>`;
@@ -763,15 +720,15 @@
     fetchChartData(currentRange);
     fetchRecentTable();
 
-    // Auto-refresh polling every 10 seconds
-    autoRefreshTimer = setInterval(() => {
+    // Auto-refresh telemetry polling every 10 seconds
+    setInterval(() => {
       fetchLatestData();
       fetchRecentTable();
     }, 10000);
 
-    // Refresh charts every 60 seconds
+    // Refresh charts every 30 seconds
     setInterval(() => {
       fetchChartData(currentRange);
-    }, 60000);
+    }, 30000);
   });
 })();

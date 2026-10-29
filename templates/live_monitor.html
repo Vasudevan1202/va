@@ -1,60 +1,230 @@
 {% extends "base.html" %}
 
 {% block title %}Live Monitor{% endblock %}
-{% block header_title %}Live Monitor{% endblock %}
+{% block header_title %}Live Environmental Monitor{% endblock %}
 
 {% block content %}
-<div class="row g-4 mb-4">
+<!-- Section 1: Top Live Metric Cards -->
+<div class="row g-3 mb-4">
   <!-- Temperature Live Gauge Box -->
   <div class="col-12 col-md-4">
-    <div class="va-card text-center py-4 h-100">
-      <div class="va-card-title mb-2">Ambient Temperature</div>
-      <div class="display-3 fw-bold text-white my-2" id="liveTempVal">--.-</div>
-      <div class="fs-5 text-cyan fw-semibold">°C (Celsius)</div>
-      <div class="d-flex justify-content-center align-items-center gap-2 mt-3 flex-wrap">
-        <span class="status-pill online" id="liveTempStatus">
-          <span class="status-dot"></span>
-          <span id="liveTempStatusText">Normal Range</span>
-        </span>
-        <span class="text-secondary small" id="liveTempThresholdInfo">Threshold: --°C</span>
+    <div class="condition-card h-100">
+      <div class="card-icon-squircle temp-squircle" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"></path>
+        </svg>
+      </div>
+      <div class="card-metric-body">
+        <div class="card-metric-label">Ambient Temperature</div>
+        <div class="card-metric-value-row">
+          <span class="card-metric-value" id="liveTempVal">--.-</span>
+          <span class="card-metric-unit">°C</span>
+        </div>
+        <div class="d-flex align-items-center justify-content-between mt-1 flex-wrap gap-1">
+          <span class="status-pill online" id="liveTempStatus">
+            <span class="status-dot"></span>
+            <span id="liveTempStatusText">Normal Range</span>
+          </span>
+          <span class="badge bg-secondary bg-opacity-10 text-muted small" id="liveTempThresholdInfo" style="font-size: 11px;">Threshold: 35.0°C</span>
+        </div>
+        <div class="text-muted small mt-2 pt-2 border-top border-light" id="liveTempTrendMeta" style="font-size: 11px;">
+          Hardware Telemetry Stream
+        </div>
       </div>
     </div>
   </div>
 
   <!-- Relative Humidity Live Gauge Box -->
   <div class="col-12 col-md-4">
-    <div class="va-card text-center py-4 h-100">
-      <div class="va-card-title mb-2">Relative Humidity</div>
-      <div class="display-3 fw-bold text-white my-2" id="liveHumVal">--.-</div>
-      <div class="fs-5 text-cyan fw-semibold">% (RH)</div>
-      <div class="d-flex justify-content-center align-items-center gap-2 mt-3 flex-wrap">
-        <span class="status-pill online" id="liveHumStatus">
-          <span class="status-dot"></span>
-          <span id="liveHumStatusText">DHT11 Active</span>
-        </span>
-        <span class="text-secondary small" id="liveHeatIndexInfo">Heat Index: --°C</span>
+    <div class="condition-card h-100">
+      <div class="card-icon-squircle hum-squircle" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
+        </svg>
+      </div>
+      <div class="card-metric-body">
+        <div class="card-metric-label">Relative Humidity</div>
+        <div class="card-metric-value-row">
+          <span class="card-metric-value" id="liveHumVal">--.-</span>
+          <span class="card-metric-unit">%</span>
+        </div>
+        <div class="d-flex align-items-center justify-content-between mt-1 flex-wrap gap-1">
+          <span class="status-pill online" id="liveHumStatus">
+            <span class="status-dot"></span>
+            <span id="liveHumStatusText">DHT11 Active</span>
+          </span>
+          <span class="badge bg-info bg-opacity-10 text-cyan small" id="liveHeatIndexInfo" style="font-size: 11px; color: #0284c7;">Heat Index: --°C</span>
+        </div>
+        <div class="text-muted small mt-2 pt-2 border-top border-light" style="font-size: 11px;">
+          Capacitive Hygrometer Pipeline
+        </div>
       </div>
     </div>
   </div>
 
   <!-- Barometric Pressure Live Gauge Box -->
   <div class="col-12 col-md-4">
-    <div class="va-card text-center py-4 h-100">
-      <div class="va-card-title mb-2">Barometric Pressure</div>
-      <div class="display-3 fw-bold text-white my-2" id="livePressVal">----.-</div>
-      <div class="fs-5 text-cyan fw-semibold">hPa (Hectopascals)</div>
-      <div class="d-flex justify-content-center align-items-center gap-2 mt-3 flex-wrap">
-        <span class="status-pill online" id="livePressStatus">
-          <span class="status-dot"></span>
-          <span id="livePressStatusText">Nominal Scale</span>
-        </span>
-        <span class="text-secondary small" id="livePressBaroTrend">Trend: Calculating...</span>
+    <div class="condition-card h-100">
+      <div class="card-icon-squircle heat-squircle" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <polyline points="12 6 12 12 16 14"></polyline>
+        </svg>
+      </div>
+      <div class="card-metric-body">
+        <div class="card-metric-label">Barometric Pressure</div>
+        <div class="card-metric-value-row">
+          <span class="card-metric-value" id="livePressVal">----.-</span>
+          <span class="card-metric-unit">hPa</span>
+        </div>
+        <div class="d-flex align-items-center justify-content-between mt-1 flex-wrap gap-1">
+          <span class="status-pill online" id="livePressStatus">
+            <span class="status-dot"></span>
+            <span id="livePressStatusText">Nominal Scale</span>
+          </span>
+          <span class="badge bg-secondary bg-opacity-10 text-muted small" id="livePressBaroTrend" style="font-size: 11px;">BMP280 Sensor</span>
+        </div>
+        <div class="text-muted small mt-2 pt-2 border-top border-light" style="font-size: 11px;" id="livePressSubtext">
+          I²C Bosch Piezoresistive Cell
+        </div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- Diagnostics & Stream Section -->
+<!-- Section 2: Real-Time Live Environmental Telemetry Charts -->
+<div class="chart-card-sunset mb-4">
+  <div class="chart-card-header d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+    <div>
+      <h3 class="chart-card-title m-0">Live Environmental Telemetry Charts</h3>
+      <div class="chart-card-sub" id="liveChartSummary">Continuous real-time telemetry updates from sensor pipeline</div>
+    </div>
+    <div class="d-flex align-items-center gap-3 flex-wrap">
+      <!-- Series Toggles -->
+      <div class="sunset-chart-legend d-flex align-items-center gap-2" id="liveLegendToggles" role="group" aria-label="Live series toggles">
+        <span class="legend-item" data-target="temp" title="Toggle Live Temperature"><span class="legend-dot temp-dot"></span> Temp (°C)</span>
+        <span class="legend-item" data-target="hum" title="Toggle Live Humidity"><span class="legend-dot hum-dot"></span> Humidity (%)</span>
+        <span class="legend-item" data-target="heat" title="Toggle Live Heat Index"><span class="legend-dot heat-dot"></span> Heat Index (°C)</span>
+        <span class="legend-item" data-target="press" title="Toggle Live Pressure"><span class="legend-dot press-dot"></span> Pressure (hPa)</span>
+      </div>
+      <!-- Time Range Selector Pills -->
+      <div class="btn-group-pill" id="liveRangeSelector" role="group" aria-label="Time range selector">
+        <button type="button" data-range="1h" class="active">1h</button>
+        <button type="button" data-range="6h">6h</button>
+        <button type="button" data-range="24h">24h</button>
+        <button type="button" data-range="7d">7d</button>
+        <button type="button" data-range="30d">30d</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4 Separated Live Measurement Charts Grid -->
+  <div class="row g-3">
+    <!-- Live Chart 1: Ambient Temperature -->
+    <div class="col-12 col-lg-6" id="liveCardTempWrapper">
+      <div class="p-3 rounded border border-light bg-light bg-opacity-25 h-100 d-flex flex-column">
+        <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-1">
+          <div>
+            <span class="fw-bold text-dark fs-6">Live Ambient Temperature</span>
+            <span class="badge bg-danger bg-opacity-10 text-danger ms-2" style="font-size: 11px;">°C Scale</span>
+          </div>
+          <span class="chart-badge success" id="liveTempAlertBadge">Normal Range</span>
+        </div>
+        <div class="chart-box-sunset flex-grow-1" style="position: relative; height: 230px;">
+          <canvas id="liveTempChart" aria-label="Live ambient temperature chart"></canvas>
+          <div class="chart-empty-overlay d-none" id="liveTempEmptyOverlay">
+            <div class="chart-empty-icon" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+            </div>
+            <div class="chart-empty-title">Awaiting Live Telemetry</div>
+            <div class="chart-empty-sub">Incoming sensor readings from Raspberry Pi will graph here automatically.</div>
+          </div>
+        </div>
+        <div id="liveTempStatsBar" class="mt-2"></div>
+      </div>
+    </div>
+
+    <!-- Live Chart 2: Relative Humidity -->
+    <div class="col-12 col-lg-6" id="liveCardHumWrapper">
+      <div class="p-3 rounded border border-light bg-light bg-opacity-25 h-100 d-flex flex-column">
+        <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-1">
+          <div>
+            <span class="fw-bold text-dark fs-6">Live Relative Humidity</span>
+            <span class="badge bg-info bg-opacity-10 text-cyan ms-2" style="font-size: 11px; color: #0284c7;">0–100% RH</span>
+          </div>
+          <span class="badge bg-secondary bg-opacity-10 text-muted" style="font-size: 11px;">DHT11 Sensor</span>
+        </div>
+        <div class="chart-box-sunset flex-grow-1" style="position: relative; height: 230px;">
+          <canvas id="liveHumChart" aria-label="Live relative humidity chart"></canvas>
+          <div class="chart-empty-overlay d-none" id="liveHumEmptyOverlay">
+            <div class="chart-empty-icon" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+            </div>
+            <div class="chart-empty-title">Awaiting Humidity Data</div>
+            <div class="chart-empty-sub">Connecting to hygrometer ingestion stream.</div>
+          </div>
+        </div>
+        <div id="liveHumStatsBar" class="mt-2"></div>
+      </div>
+    </div>
+
+    <!-- Live Chart 3: Calculated Heat Index -->
+    <div class="col-12 col-lg-6" id="liveCardHeatWrapper">
+      <div class="p-3 rounded border border-light bg-light bg-opacity-25 h-100 d-flex flex-column">
+        <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-1">
+          <div>
+            <span class="fw-bold text-dark fs-6">Live Calculated Heat Index</span>
+            <span class="badge bg-warning bg-opacity-10 ms-2" style="font-size: 11px; color: #ea580c;">NOAA Rothfusz</span>
+          </div>
+          <span class="chart-badge warning" id="liveHeatRiskBadge">Normal Comfort</span>
+        </div>
+        <div class="text-muted small mb-1" style="font-size: 11px;">
+          <em>Thermodynamic apparent heat index &bull; Calculated, not direct sensor reading</em>
+        </div>
+        <div class="chart-box-sunset flex-grow-1" style="position: relative; height: 210px;">
+          <canvas id="liveHeatChart" aria-label="Live heat index chart"></canvas>
+          <div class="chart-empty-overlay d-none" id="liveHeatEmptyOverlay">
+            <div class="chart-empty-icon" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+            </div>
+            <div class="chart-empty-title">Below Thermal Stress Threshold</div>
+            <div class="chart-empty-sub">Heat index is active when T &ge; 26.7°C (80°F) and RH &ge; 40%. Ambient readings are currently within baseline comfort.</div>
+          </div>
+        </div>
+        <div id="liveHeatStatsBar" class="mt-2"></div>
+      </div>
+    </div>
+
+    <!-- Live Chart 4: Atmospheric Pressure -->
+    <div class="col-12 col-lg-6" id="liveCardPressWrapper">
+      <div class="p-3 rounded border border-light bg-light bg-opacity-25 h-100 d-flex flex-column">
+        <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-1">
+          <div>
+            <span class="fw-bold text-dark fs-6">Live Atmospheric Pressure</span>
+            <span class="badge bg-secondary bg-opacity-10 text-muted ms-2" style="font-size: 11px;">hPa</span>
+          </div>
+          <span class="chart-badge secondary" id="livePressStatusBadge">BMP280 Barometer</span>
+        </div>
+        <div class="text-muted small mb-1" style="font-size: 11px;">
+          <em>Real physical barometric measurements from Bosch BMP280</em>
+        </div>
+        <div class="chart-box-sunset flex-grow-1" style="position: relative; height: 210px;">
+          <canvas id="livePressChart" aria-label="Live barometric pressure chart"></canvas>
+          <div class="chart-empty-overlay d-none" id="livePressEmptyOverlay">
+            <div class="chart-empty-icon" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+            </div>
+            <div class="chart-empty-title" id="livePressEmptyTitle">Barometric Sensor Unavailable</div>
+            <div class="chart-empty-sub" id="livePressEmptySub">No pressure readings recorded. Physical BMP280 sensor is disconnected or DHT11 pipeline is active.</div>
+          </div>
+        </div>
+        <div id="livePressStatsBar" class="mt-2"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Section 3: Diagnostics & Stream Section -->
 <div class="row g-4 mb-4">
   <div class="col-12 col-lg-4">
     <div class="va-card h-100">
@@ -68,24 +238,20 @@
 
       <ul class="list-group list-group-flush bg-transparent">
         <li class="list-group-item bg-transparent text-secondary px-0 d-flex justify-content-between">
-          <span>Sensor IC:</span>
-          <strong class="text-white">Bosch BMP280</strong>
+          <span>Active Sensor IC:</span>
+          <strong class="text-dark" id="diagSensorName">DHT11 / BMP280</strong>
         </li>
         <li class="list-group-item bg-transparent text-secondary px-0 d-flex justify-content-between">
-          <span>Physical Bus:</span>
-          <strong class="text-white">I²C Bus 1 (/dev/i2c-1)</strong>
+          <span>Physical Pipeline:</span>
+          <strong class="text-dark">USB Serial / I²C Bus 1</strong>
         </li>
         <li class="list-group-item bg-transparent text-secondary px-0 d-flex justify-content-between">
-          <span>I²C Address:</span>
-          <strong class="text-white" id="diagAddress">0x76 / 0x77</strong>
+          <span>Telemetry Freshness:</span>
+          <strong class="text-dark" id="diagFreshness">--</strong>
         </li>
         <li class="list-group-item bg-transparent text-secondary px-0 d-flex justify-content-between">
-          <span>Data Freshness:</span>
-          <strong class="text-white" id="diagFreshness">--</strong>
-        </li>
-        <li class="list-group-item bg-transparent text-secondary px-0 d-flex justify-content-between">
-          <span>Consecutive Read Errors:</span>
-          <strong class="text-white" id="diagErrorCount">0</strong>
+          <span>Read Errors:</span>
+          <strong class="text-dark" id="diagErrorCount">0</strong>
         </li>
         <li class="list-group-item bg-transparent text-secondary px-0 d-flex justify-content-between">
           <span>Runtime Mode:</span>
@@ -93,12 +259,12 @@
         </li>
       </ul>
 
-      <div class="mt-3 pt-3 border-top border-secondary border-opacity-25">
-        <label class="form-label text-secondary small">Polling Interval:</label>
-        <div class="btn-group w-100" id="livePollingIntervalGroup">
-          <button type="button" class="va-btn va-btn-secondary va-btn-sm active" data-interval="5">5s</button>
-          <button type="button" class="va-btn va-btn-secondary va-btn-sm" data-interval="10">10s</button>
-          <button type="button" class="va-btn va-btn-secondary va-btn-sm" data-interval="30">30s</button>
+      <div class="mt-3 pt-3 border-top border-light">
+        <label class="form-label text-secondary small">Live Polling Frequency:</label>
+        <div class="btn-group-pill w-100 d-flex" id="livePollingIntervalGroup">
+          <button type="button" class="flex-fill active" data-interval="5">5s (Live)</button>
+          <button type="button" class="flex-fill" data-interval="10">10s</button>
+          <button type="button" class="flex-fill" data-interval="30">30s</button>
         </div>
       </div>
     </div>
@@ -106,8 +272,11 @@
 
   <div class="col-12 col-lg-8">
     <div class="va-card h-100">
-      <div class="d-flex align-items-center justify-content-between mb-3">
-        <h3 class="va-card-title m-0">Live Incoming Telemetry Stream</h3>
+      <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+        <div>
+          <h3 class="va-card-title m-0">Live Incoming Telemetry Stream</h3>
+          <small class="text-muted">Chronological packet log of physical sensor transmissions</small>
+        </div>
         <span class="badge bg-secondary" id="streamCounter">0 readings logged</span>
       </div>
 
@@ -115,7 +284,7 @@
         <table class="va-table" id="liveStreamTable">
           <thead>
             <tr>
-              <th>Timestamp</th>
+              <th>Timestamp (Local)</th>
               <th>Temp (°C)</th>
               <th>Humidity (%)</th>
               <th>Heat Index (°C)</th>
@@ -139,5 +308,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/live_monitor.js') }}"></script>
+<script src="{{ url_for('static', filename='js/live_monitor.js', v=ASSET_VERSION) }}"></script>
 {% endblock %}
