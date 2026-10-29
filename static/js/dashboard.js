@@ -823,6 +823,19 @@
         if (obsTempEl && data.forecast.observed) obsTempEl.textContent = data.forecast.observed.temperature_c.toFixed(1);
         if (obsHumEl && data.forecast.observed) obsHumEl.textContent = data.forecast.observed.humidity_pct.toFixed(1);
 
+        const modelBadge = document.getElementById("forecastModelBadge");
+        if (modelBadge && data.forecast.temperature) {
+          const tMod = data.forecast.temperature.selected_model === "persistence" ? "Persistence" : "Trend";
+          const hMod = data.forecast.humidity.selected_model === "persistence" ? "Persistence" : "Trend";
+          if (tMod === hMod) {
+            modelBadge.textContent = tMod === "Persistence" ? "Persistence (Optimal)" : "Damped Trend";
+            modelBadge.className = tMod === "Persistence" ? "badge bg-secondary bg-opacity-25 text-dark fw-medium" : "badge bg-primary bg-opacity-10 text-primary fw-medium";
+          } else {
+            modelBadge.textContent = `T: ${tMod} | H: ${hMod}`;
+            modelBadge.className = "badge bg-info bg-opacity-10 text-info fw-medium";
+          }
+        }
+
         const predTempEl = document.getElementById("forecastPredTemp");
         const predHumEl = document.getElementById("forecastPredHum");
         const tempDeltaBadge = document.getElementById("forecastTempDeltaBadge");
@@ -836,22 +849,41 @@
 
         if (predTempEl) predTempEl.textContent = predTemp.toFixed(1);
         if (tempDeltaBadge) {
-          const sign = deltaTemp > 0 ? "+" : "";
-          tempDeltaBadge.textContent = `${sign}${deltaTemp.toFixed(1)}°C`;
-          tempDeltaBadge.className = deltaTemp > 0.3 ? "badge bg-danger ms-1" : (deltaTemp < -0.3 ? "badge bg-info ms-1" : "badge bg-secondary ms-1");
+          if (Math.abs(deltaTemp) < 0.05) {
+            tempDeltaBadge.textContent = "0.0°C";
+            tempDeltaBadge.className = "badge bg-secondary ms-1";
+            tempDeltaBadge.title = data.forecast.temperature.selection_reason || "Persistence baseline";
+          } else {
+            const sign = deltaTemp > 0 ? "+" : "";
+            tempDeltaBadge.textContent = `${sign}${deltaTemp.toFixed(1)}°C`;
+            tempDeltaBadge.className = deltaTemp > 0.3 ? "badge bg-danger ms-1" : "badge bg-info ms-1";
+            tempDeltaBadge.title = data.forecast.temperature.selection_reason || "";
+          }
         }
 
         if (predHumEl) predHumEl.textContent = predHum.toFixed(1);
         if (humDeltaBadge) {
-          const sign = deltaHum > 0 ? "+" : "";
-          humDeltaBadge.textContent = `${sign}${deltaHum.toFixed(1)}%`;
-          humDeltaBadge.className = deltaHum > 1.0 ? "badge bg-primary ms-1" : (deltaHum < -1.0 ? "badge bg-warning ms-1" : "badge bg-secondary ms-1");
+          if (Math.abs(deltaHum) < 0.05) {
+            humDeltaBadge.textContent = "0.0%";
+            humDeltaBadge.className = "badge bg-secondary ms-1";
+            humDeltaBadge.title = data.forecast.humidity.selection_reason || "Persistence baseline";
+          } else {
+            const sign = deltaHum > 0 ? "+" : "";
+            humDeltaBadge.textContent = `${sign}${deltaHum.toFixed(1)}%`;
+            humDeltaBadge.className = deltaHum > 1.0 ? "badge bg-primary ms-1" : "badge bg-warning ms-1";
+            humDeltaBadge.title = data.forecast.humidity.selection_reason || "";
+          }
         }
 
         if (intervalText) {
           const lower = data.forecast.temperature.lower_bound_c;
           const upper = data.forecast.temperature.upper_bound_c;
-          intervalText.textContent = `${lower.toFixed(1)}°C – ${upper.toFixed(1)}°C`;
+          const covPct = data.forecast.temperature.empirical_coverage_pct;
+          if (covPct !== null && covPct !== undefined) {
+            intervalText.textContent = `${lower.toFixed(1)}°C – ${upper.toFixed(1)}°C (${covPct}% empirical cov)`;
+          } else {
+            intervalText.textContent = `${lower.toFixed(1)}°C – ${upper.toFixed(1)}°C`;
+          }
         }
 
         const btSamples = document.getElementById("forecastBacktestSamples");
@@ -860,12 +892,16 @@
         const btSkillText = document.getElementById("forecastSkillText");
 
         if (data.backtest && data.backtest.status === "active") {
-          if (btSamples) btSamples.textContent = `${data.backtest.samples_evaluated} Samples`;
+          if (btSamples) btSamples.textContent = `${data.backtest.samples_evaluated} Pairs`;
           if (btTempMetrics && data.backtest.temperature) {
-            btTempMetrics.textContent = `${data.backtest.temperature.mae_c.toFixed(2)}°C / ${data.backtest.temperature.rmse_c.toFixed(2)}°C`;
+            const tSkill = data.backtest.temperature.skill_score_pct;
+            const sign = tSkill > 0 ? "+" : "";
+            btTempMetrics.innerHTML = `Trend ${data.backtest.temperature.trend_mae_c}°C &bull; Pers ${data.backtest.temperature.persistence_mae_c}°C <span class="${tSkill > 0 ? 'text-success fw-bold' : 'text-muted'}" style="font-size:11px;">(${sign}${tSkill.toFixed(1)}%)</span>`;
           }
           if (btHumMetrics && data.backtest.humidity) {
-            btHumMetrics.textContent = `${data.backtest.humidity.mae_pct.toFixed(1)}% / ${data.backtest.humidity.rmse_pct.toFixed(1)}%`;
+            const hSkill = data.backtest.humidity.skill_score_pct;
+            const sign = hSkill > 0 ? "+" : "";
+            btHumMetrics.innerHTML = `Trend ${data.backtest.humidity.trend_mae_pct}% &bull; Pers ${data.backtest.humidity.persistence_mae_pct}% <span class="${hSkill > 0 ? 'text-success fw-bold' : 'text-muted'}" style="font-size:11px;">(${sign}${hSkill.toFixed(1)}%)</span>`;
           }
           if (btSkillText) btSkillText.textContent = data.backtest.summary || "Backtested vs persistence baseline.";
         } else {
