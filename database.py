@@ -463,6 +463,60 @@ def get_latest_dht11_reading(db_path: Optional[str] = None, real_only: bool = Fa
     finally:
         conn.close()
 
+def get_dht11_readings_window(
+    hours: float = 6.0,
+    db_path: Optional[str] = None,
+    real_only: bool = False,
+    limit: int = 2000
+) -> List[Dict[str, Any]]:
+    """
+    Retrieves chronological valid DHT11 readings over a recent time window (in hours)
+    for data aggregation, walk-forward backtesting, and short-term forecasting.
+    Respects real_only to guarantee strict separation of live hardware readings from demo/simulated data.
+    """
+    from datetime import datetime, timezone, timedelta
+    cutoff = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
+    base = "(sensor_type = 'dht11' OR source LIKE '%dht11%' OR (humidity_pct IS NOT NULL AND pressure_hpa IS NULL))"
+    clauses = [base, "validity_status = 'valid'", "timestamp >= ?"]
+    params: List[Any] = [cutoff]
+
+    if real_only:
+        clauses.append("source NOT IN ('demo', 'simulated')")
+
+    where_sql = "WHERE " + " AND ".join(clauses)
+
+    if is_turso_active(db_path):
+        return turso_query(
+            f"""
+            SELECT id, timestamp, temperature_c, pressure_hpa, source, validity_status,
+                   humidity_pct, heat_index_c, latitude, longitude, sensor_type
+            FROM readings
+            {where_sql}
+            ORDER BY timestamp ASC
+            LIMIT {limit};
+            """,
+            params
+        )
+
+    conn = get_connection(db_path)
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            f"""
+            SELECT id, timestamp, temperature_c, pressure_hpa, source, validity_status,
+                   humidity_pct, heat_index_c, latitude, longitude, sensor_type
+            FROM readings
+            {where_sql}
+            ORDER BY timestamp ASC
+            LIMIT {limit};
+            """,
+            params
+        )
+        return [dict(row) for row in cursor.fetchall()]
+    finally:
+        conn.close()
+
+
 def get_latest_bmp280_reading(db_path: Optional[str] = None, real_only: bool = False) -> Optional[Dict[str, Any]]:
     """Retrieves the most recent BMP280 reading (ambient temperature & barometric pressure)."""
     base = "sensor_type IN ('bmp280', 'bme280') OR pressure_hpa IS NOT NULL"

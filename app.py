@@ -821,6 +821,80 @@ def create_app(test_config=None) -> Flask:
             "summary": summary
         }), 200
 
+    @app.route("/api/forecast", methods=["GET"])
+    def api_forecast():
+        """
+        Read-only short-term forecasting endpoint (Phase 1 Local Weather Forecasting Engine).
+        Accepts query parameters:
+          horizon: '15m' (default), '30m', or '60m' (or integer minutes: 15, 30, 60)
+          include_history: 'true'/'false' (whether to attach the 1-minute historical series for charting)
+        Separates live and demo data; uses bounded query window and cached calculations.
+        """
+        from forecast_engine import ForecastEngine
+
+        # Horizon parameter parsing
+        horizon_raw = request.args.get("horizon", "15m").strip().lower()
+        if horizon_raw.endswith("m"):
+            horizon_raw = horizon_raw[:-1]
+        try:
+            horizon_min = int(horizon_raw)
+        except ValueError:
+            horizon_min = 15
+
+        if horizon_min not in (15, 30, 60):
+            horizon_min = 15
+
+        include_history = request.args.get("include_history", "false").strip().lower() in ("1", "true", "yes")
+
+        # In live mode or production, strictly require real hardware readings
+        real_only = (Config.MODE == "live" or Config.is_production_mode())
+        if not real_only and request.args.get("real_only") in ("1", "true"):
+            real_only = True
+
+        db_path = app.config.get("DATABASE_PATH", Config.DATABASE_PATH)
+
+        try:
+            # Query recent 6 hours of DHT11 readings
+            raw_readings = database.get_dht11_readings_window(
+                hours=6.0,
+                db_path=db_path,
+                real_only=real_only,
+                limit=1500
+            )
+
+            report = ForecastEngine.get_forecast_report(
+                raw_readings=raw_readings,
+                horizon_min=horizon_min,
+                real_only=real_only
+            )
+
+            if include_history:
+                prep = ForecastEngine.prepare_dht11_series(raw_readings, real_only=real_only)
+                # Attach recent 60 1-minute points for client-side trajectory charting
+                report["history_series"] = [
+                    {
+                        "timestamp": b["timestamp"],
+                        "temperature_c": b["temperature_c"],
+                        "humidity_pct": b["humidity_pct"]
+                    }
+                    for b in prep["buckets"][-60:]
+                ]
+
+            return jsonify(report), 200
+
+        except Exception as e:
+            logger.error(f"Error generating forecast report: {type(e).__name__}: {e}", exc_info=True)
+            return jsonify({
+                "status": "error",
+                "is_available": False,
+                "error": "Failed to compute forecast due to internal error.",
+                "disclaimers": [
+                    "Experimental local forecast for ambient environmental awareness only.",
+                    "DHT11 physical measurement accuracy is ±2°C and ±5% RH.",
+                    "Not certified for official meteorological forecasting."
+                ]
+            }), 500
+
     @app.route("/api/readings/history", methods=["GET"])
     def api_readings_history():
         """

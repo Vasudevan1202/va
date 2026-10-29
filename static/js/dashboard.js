@@ -11,9 +11,11 @@
   let humChart = null;
   let heatChart = null;
   let pressChart = null;
+  let forecastChart = null;
 
   let currentRange = "24h";
   let currentThresholdC = 35.0;
+  let currentForecastHorizon = 15;
   let isFetchingCharts = false;
 
   /**
@@ -629,6 +631,333 @@
     }
   }
 
+  /**
+   * Initializes the experimental local microclimate forecast trajectory chart.
+   */
+  function initForecastChart() {
+    const canvas = document.getElementById("forecastTrajectoryChart");
+    if (!canvas || !window.Chart) return;
+
+    forecastChart = new Chart(canvas, {
+      type: "line",
+      data: {
+        labels: [],
+        datasets: [
+          {
+            label: "Observed Temp (°C)",
+            data: [],
+            borderColor: "#f25c38",
+            backgroundColor: "rgba(242, 92, 56, 0.08)",
+            borderWidth: 2.2,
+            cubicInterpolationMode: "monotone",
+            pointRadius: 2.5,
+            pointBackgroundColor: "#f25c38",
+            yAxisID: "y"
+          },
+          {
+            label: "Forecast Temp (°C)",
+            data: [],
+            borderColor: "#dc2626",
+            borderDash: [6, 4],
+            borderWidth: 2.2,
+            pointRadius: 5,
+            pointBackgroundColor: "#dc2626",
+            pointHoverRadius: 7,
+            yAxisID: "y"
+          },
+          {
+            label: "80% Temp Upper Bound",
+            data: [],
+            borderColor: "rgba(220, 38, 38, 0.45)",
+            borderDash: [3, 3],
+            borderWidth: 1,
+            pointRadius: 3,
+            fill: false,
+            yAxisID: "y"
+          },
+          {
+            label: "80% Temp Lower Bound",
+            data: [],
+            borderColor: "rgba(220, 38, 38, 0.45)",
+            borderDash: [3, 3],
+            borderWidth: 1,
+            pointRadius: 3,
+            fill: "-1",
+            backgroundColor: "rgba(220, 38, 38, 0.10)",
+            yAxisID: "y"
+          },
+          {
+            label: "Observed Humidity (%)",
+            data: [],
+            borderColor: "#0284c7",
+            backgroundColor: "rgba(2, 132, 199, 0.08)",
+            borderWidth: 2.2,
+            cubicInterpolationMode: "monotone",
+            pointRadius: 2.5,
+            pointBackgroundColor: "#0284c7",
+            yAxisID: "y1"
+          },
+          {
+            label: "Forecast Humidity (%)",
+            data: [],
+            borderColor: "#0369a1",
+            borderDash: [6, 4],
+            borderWidth: 2.2,
+            pointRadius: 5,
+            pointBackgroundColor: "#0369a1",
+            pointHoverRadius: 7,
+            yAxisID: "y1"
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: { duration: 300 },
+        interaction: { mode: "index", intersect: false },
+        layout: { padding: { top: 10, right: 10, bottom: 5, left: 5 } },
+        plugins: {
+          legend: {
+            display: true,
+            position: "top",
+            labels: {
+              boxWidth: 12,
+              font: { size: 11, family: "'Inter', sans-serif" },
+              filter: function (item) {
+                return !item.text.includes("Bound");
+              }
+            }
+          },
+          tooltip: {
+            enabled: true,
+            backgroundColor: "rgba(255, 255, 255, 0.98)",
+            titleColor: "#1f1412",
+            bodyColor: "#5a463e",
+            borderColor: "rgba(230, 210, 195, 0.95)",
+            borderWidth: 1.5,
+            padding: 10,
+            usePointStyle: true,
+            callbacks: {
+              label: function (ctx) {
+                const val = ctx.parsed.y;
+                if (val === null || val === undefined) return null;
+                const dsLabel = ctx.dataset.label || "";
+                if (dsLabel.includes("Temp")) {
+                  return ` ${dsLabel}: ${val.toFixed(1)}°C`;
+                }
+                return ` ${dsLabel}: ${val.toFixed(1)}%`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            ticks: { maxRotation: 0, font: { size: 11 } }
+          },
+          y: {
+            type: "linear",
+            display: true,
+            position: "left",
+            title: { display: true, text: "Temperature (°C)", font: { size: 11, weight: "600" } },
+            grid: { color: "rgba(0,0,0,0.05)" },
+            ticks: { font: { size: 11 } }
+          },
+          y1: {
+            type: "linear",
+            display: true,
+            position: "right",
+            title: { display: true, text: "Humidity (%)", font: { size: 11, weight: "600" } },
+            grid: { drawOnChartArea: false },
+            min: 0,
+            max: 100,
+            ticks: { font: { size: 11 } }
+          }
+        }
+      }
+    });
+  }
+
+  /**
+   * Fetches local microclimate forecast data and updates UI metrics, status, and chart.
+   */
+  async function fetchForecastData() {
+    const emptyOverlay = document.getElementById("forecastEmptyOverlay");
+    const emptyTitle = document.getElementById("forecastEmptyTitle");
+    const emptySub = document.getElementById("forecastEmptySub");
+    const statusPill = document.getElementById("forecastStatusPill");
+    const statusText = document.getElementById("forecastStatusText");
+
+    try {
+      const res = await fetch(`/api/forecast?horizon=${currentForecastHorizon}m&include_history=true`);
+      if (!res.ok) throw new Error("Forecast API HTTP " + res.status);
+      const data = await res.json();
+
+      const obsTempEl = document.getElementById("forecastObsTemp");
+      const obsHumEl = document.getElementById("forecastObsHum");
+      const obsTimeEl = document.getElementById("forecastObsTime");
+      const obsAgeEl = document.getElementById("forecastObsAge");
+
+      if (data.sensor && data.sensor.last_reading_time) {
+        if (obsTimeEl) {
+          const d = new Date(data.sensor.last_reading_time);
+          obsTimeEl.textContent = isNaN(d.getTime()) ? data.sensor.last_reading_time : d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+        }
+      }
+      if (data.sensor && data.sensor.data_age_seconds !== null && data.sensor.data_age_seconds !== undefined) {
+        if (obsAgeEl) {
+          const sec = data.sensor.data_age_seconds;
+          obsAgeEl.textContent = sec < 60 ? `${Math.round(sec)}s ago` : `${Math.round(sec / 60)}m ago`;
+          obsAgeEl.className = data.sensor.freshness === "fresh" ? "badge bg-success text-white" : "badge bg-warning text-dark";
+        }
+      }
+
+      if (data.is_available && data.forecast) {
+        if (emptyOverlay) emptyOverlay.classList.add("d-none");
+
+        if (statusPill && statusText) {
+          statusPill.className = "status-pill online py-1 px-2";
+          statusText.textContent = `Active ${data.forecast.horizon_minutes}m Horizon`;
+        }
+
+        if (obsTempEl && data.forecast.observed) obsTempEl.textContent = data.forecast.observed.temperature_c.toFixed(1);
+        if (obsHumEl && data.forecast.observed) obsHumEl.textContent = data.forecast.observed.humidity_pct.toFixed(1);
+
+        const predTempEl = document.getElementById("forecastPredTemp");
+        const predHumEl = document.getElementById("forecastPredHum");
+        const tempDeltaBadge = document.getElementById("forecastTempDeltaBadge");
+        const humDeltaBadge = document.getElementById("forecastHumDeltaBadge");
+        const intervalText = document.getElementById("forecastIntervalText");
+
+        const predTemp = data.forecast.temperature.predicted_c;
+        const deltaTemp = data.forecast.temperature.change_c;
+        const predHum = data.forecast.humidity.predicted_pct;
+        const deltaHum = data.forecast.humidity.change_pct;
+
+        if (predTempEl) predTempEl.textContent = predTemp.toFixed(1);
+        if (tempDeltaBadge) {
+          const sign = deltaTemp > 0 ? "+" : "";
+          tempDeltaBadge.textContent = `${sign}${deltaTemp.toFixed(1)}°C`;
+          tempDeltaBadge.className = deltaTemp > 0.3 ? "badge bg-danger ms-1" : (deltaTemp < -0.3 ? "badge bg-info ms-1" : "badge bg-secondary ms-1");
+        }
+
+        if (predHumEl) predHumEl.textContent = predHum.toFixed(1);
+        if (humDeltaBadge) {
+          const sign = deltaHum > 0 ? "+" : "";
+          humDeltaBadge.textContent = `${sign}${deltaHum.toFixed(1)}%`;
+          humDeltaBadge.className = deltaHum > 1.0 ? "badge bg-primary ms-1" : (deltaHum < -1.0 ? "badge bg-warning ms-1" : "badge bg-secondary ms-1");
+        }
+
+        if (intervalText) {
+          const lower = data.forecast.temperature.lower_bound_c;
+          const upper = data.forecast.temperature.upper_bound_c;
+          intervalText.textContent = `${lower.toFixed(1)}°C – ${upper.toFixed(1)}°C`;
+        }
+
+        const btSamples = document.getElementById("forecastBacktestSamples");
+        const btTempMetrics = document.getElementById("forecastTempMetrics");
+        const btHumMetrics = document.getElementById("forecastHumMetrics");
+        const btSkillText = document.getElementById("forecastSkillText");
+
+        if (data.backtest && data.backtest.status === "active") {
+          if (btSamples) btSamples.textContent = `${data.backtest.samples_evaluated} Samples`;
+          if (btTempMetrics && data.backtest.temperature) {
+            btTempMetrics.textContent = `${data.backtest.temperature.mae_c.toFixed(2)}°C / ${data.backtest.temperature.rmse_c.toFixed(2)}°C`;
+          }
+          if (btHumMetrics && data.backtest.humidity) {
+            btHumMetrics.textContent = `${data.backtest.humidity.mae_pct.toFixed(1)}% / ${data.backtest.humidity.rmse_pct.toFixed(1)}%`;
+          }
+          if (btSkillText) btSkillText.textContent = data.backtest.summary || "Backtested vs persistence baseline.";
+        } else {
+          if (btSamples) btSamples.textContent = "Provisional";
+          if (btTempMetrics) btTempMetrics.textContent = "Accumulating";
+          if (btHumMetrics) btHumMetrics.textContent = "Accumulating";
+          if (btSkillText) btSkillText.textContent = (data.backtest && data.backtest.explanation) || "Evaluating rolling-origin backtest...";
+        }
+
+        // Update trajectory chart
+        if (forecastChart && data.history_series && data.history_series.length > 0) {
+          const history = data.history_series;
+          const labels = [];
+          const obsTempData = [];
+          const obsHumData = [];
+
+          history.forEach(pt => {
+            const dt = new Date(pt.timestamp);
+            const timeStr = isNaN(dt.getTime()) ? pt.timestamp.substring(11, 16) : dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+            labels.push(timeStr);
+            obsTempData.push(pt.temperature_c);
+            obsHumData.push(pt.humidity_pct);
+          });
+
+          const targetDt = new Date(data.forecast.target_timestamp);
+          const targetLabel = isNaN(targetDt.getTime()) ? `+${data.forecast.horizon_minutes}m` : targetDt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + " (Forecast)";
+          labels.push(targetLabel);
+
+          const n = labels.length;
+          const forecastTempData = new Array(n).fill(null);
+          const forecastHumData = new Array(n).fill(null);
+          const upperTempData = new Array(n).fill(null);
+          const lowerTempData = new Array(n).fill(null);
+
+          const lastIdx = n - 2;
+          forecastTempData[lastIdx] = obsTempData[lastIdx];
+          forecastTempData[n - 1] = predTemp;
+
+          forecastHumData[lastIdx] = obsHumData[lastIdx];
+          forecastHumData[n - 1] = predHum;
+
+          upperTempData[lastIdx] = obsTempData[lastIdx];
+          upperTempData[n - 1] = data.forecast.temperature.upper_bound_c;
+
+          lowerTempData[lastIdx] = obsTempData[lastIdx];
+          lowerTempData[n - 1] = data.forecast.temperature.lower_bound_c;
+
+          forecastChart.data.labels = labels;
+          forecastChart.data.datasets[0].data = obsTempData;
+          forecastChart.data.datasets[1].data = forecastTempData;
+          forecastChart.data.datasets[2].data = upperTempData;
+          forecastChart.data.datasets[3].data = lowerTempData;
+          forecastChart.data.datasets[4].data = obsHumData;
+          forecastChart.data.datasets[5].data = forecastHumData;
+
+          forecastChart.update("none");
+        }
+
+      } else {
+        if (emptyOverlay) emptyOverlay.classList.remove("d-none");
+        if (emptyTitle) {
+          emptyTitle.textContent = data.status === "stale_sensor" ? "Sensor Telemetry Stale" : (data.status === "offline" ? "Sensor Offline" : "Insufficient Telemetry History");
+        }
+        if (emptySub) {
+          emptySub.textContent = (data.sufficiency && data.sufficiency.reason) || "Requires at least 15 minutes of continuous sensor observations.";
+        }
+        if (statusPill && statusText) {
+          statusPill.className = data.status === "stale_sensor" ? "status-pill stale py-1 px-2" : "status-pill demo py-1 px-2";
+          statusText.textContent = data.status === "stale_sensor" ? "Stale Sensor" : (data.status === "offline" ? "Offline" : "Insufficient History");
+        }
+
+        const predTempEl = document.getElementById("forecastPredTemp");
+        const predHumEl = document.getElementById("forecastPredHum");
+        const tempDeltaBadge = document.getElementById("forecastTempDeltaBadge");
+        const humDeltaBadge = document.getElementById("forecastHumDeltaBadge");
+        const intervalText = document.getElementById("forecastIntervalText");
+
+        if (predTempEl) predTempEl.textContent = "--.-";
+        if (predHumEl) predHumEl.textContent = "--.-";
+        if (tempDeltaBadge) { tempDeltaBadge.textContent = "--"; tempDeltaBadge.className = "badge bg-secondary ms-1"; }
+        if (humDeltaBadge) { humDeltaBadge.textContent = "--"; humDeltaBadge.className = "badge bg-secondary ms-1"; }
+        if (intervalText) intervalText.textContent = "Awaiting continuous telemetry";
+      }
+
+    } catch (err) {
+      console.warn("Forecast fetch error:", err);
+      if (emptyOverlay) emptyOverlay.classList.remove("d-none");
+      if (emptyTitle) emptyTitle.textContent = "Forecast Temporarily Unavailable";
+      if (emptySub) emptySub.textContent = "Could not communicate with the local forecasting engine.";
+    }
+  }
+
   // Setup Event Listeners
   function setupListeners() {
     // Range selector buttons
@@ -667,8 +996,25 @@
         fetchLatestData();
         fetchChartData(currentRange);
         fetchRecentTable();
+        fetchForecastData();
       });
     }
+
+    // Forecast Horizon Selector Buttons (15m, 30m, 60m)
+    const forecastHorizonBtns = document.querySelectorAll("#forecastHorizonSelector button");
+    forecastHorizonBtns.forEach((btn) => {
+      btn.addEventListener("click", function () {
+        forecastHorizonBtns.forEach((b) => b.classList.remove("active"));
+        this.classList.add("active");
+        const horizonVal = parseInt(this.getAttribute("data-horizon") || "15", 10);
+        currentForecastHorizon = isNaN(horizonVal) ? 15 : horizonVal;
+
+        const horizonLabel = document.getElementById("forecastCardHorizonLabel");
+        if (horizonLabel) horizonLabel.textContent = `${currentForecastHorizon}m`;
+
+        fetchForecastData();
+      });
+    });
 
     // Threshold Form Submission
     const thresholdForm = document.getElementById("formThresholdConfig");
@@ -715,10 +1061,12 @@
   // Initialize Dashboard Controller
   document.addEventListener("DOMContentLoaded", () => {
     initCharts();
+    initForecastChart();
     setupListeners();
     fetchLatestData();
     fetchChartData(currentRange);
     fetchRecentTable();
+    fetchForecastData();
 
     // Auto-refresh telemetry polling every 10 seconds
     setInterval(() => {
@@ -726,9 +1074,10 @@
       fetchRecentTable();
     }, 10000);
 
-    // Refresh charts every 30 seconds
+    // Refresh charts and forecast every 30 seconds
     setInterval(() => {
       fetchChartData(currentRange);
+      fetchForecastData();
     }, 30000);
   });
 })();

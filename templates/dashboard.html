@@ -233,6 +233,134 @@
   </div>
 </div>
 
+<!-- Section 3.5: Local Weather Forecasting Engine (Phase 1) -->
+<div class="chart-card-sunset mb-4" id="forecastSectionCard">
+  <div class="chart-card-header d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+    <div>
+      <div class="d-flex align-items-center gap-2">
+        <h3 class="chart-card-title m-0">Local Forecast</h3>
+        <span class="badge bg-warning bg-opacity-20 text-warning-emphasis border border-warning-subtle fw-semibold" style="font-size: 11px;">Experimental Phase 1</span>
+      </div>
+      <div class="chart-card-sub" id="forecastSectionSub">Short-term microclimate prediction with time-ordered backtesting vs persistence baseline</div>
+    </div>
+    <div class="d-flex align-items-center gap-3 flex-wrap">
+      <!-- Forecast Status Pill -->
+      <span class="status-pill demo py-1 px-2" id="forecastStatusPill">
+        <span class="status-dot"></span>
+        <span id="forecastStatusText">Checking</span>
+      </span>
+      <!-- Horizon Pills -->
+      <div class="btn-group-pill" id="forecastHorizonSelector" role="group" aria-label="Forecast horizon selector">
+        <button type="button" data-horizon="15" class="active" title="Primary 15-minute operational forecast">15m</button>
+        <button type="button" data-horizon="30" title="Experimental 30-minute evaluation">30m (Eval)</button>
+        <button type="button" data-horizon="60" title="Experimental 60-minute evaluation">60m (Eval)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Key Metrics Row -->
+  <div class="row g-3 mb-3">
+    <!-- Metric 1: Current Observed Telemetry -->
+    <div class="col-12 col-md-4">
+      <div class="p-3 rounded border border-light bg-light bg-opacity-25 h-100 d-flex flex-column justify-content-between">
+        <div>
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <span class="text-muted small fw-semibold text-uppercase tracking-wider">Current Observed</span>
+            <span class="badge bg-secondary text-white" id="forecastObsAge" style="font-size: 10px;">--</span>
+          </div>
+          <div class="d-flex align-items-baseline gap-3 my-1">
+            <div>
+              <span class="fs-3 fw-bold text-dark" id="forecastObsTemp">--.-</span>
+              <span class="text-muted small">°C</span>
+            </div>
+            <div class="border-start ps-3 border-light-subtle">
+              <span class="fs-3 fw-bold text-dark" id="forecastObsHum">--.-</span>
+              <span class="text-muted small">%</span>
+            </div>
+          </div>
+        </div>
+        <div class="text-muted small mt-2 pt-2 border-top border-light-subtle d-flex justify-content-between">
+          <span>Sensor Update:</span>
+          <span class="fw-semibold text-dark text-truncate" id="forecastObsTime">--:--:--</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Metric 2: Forecast Point Estimate -->
+    <div class="col-12 col-md-4">
+      <div class="p-3 rounded border border-light bg-light bg-opacity-25 h-100 d-flex flex-column justify-content-between">
+        <div>
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <span class="text-muted small fw-semibold text-uppercase tracking-wider">Predicted (<span id="forecastCardHorizonLabel">15m</span>)</span>
+            <span class="badge bg-primary bg-opacity-10 text-primary fw-medium" id="forecastModelBadge" style="font-size: 10px;">Damped Trend</span>
+          </div>
+          <div class="d-flex align-items-baseline gap-3 my-1">
+            <div>
+              <span class="fs-3 fw-bold" style="color: #f25c38;" id="forecastPredTemp">--.-</span>
+              <span class="text-muted small">°C</span>
+              <span class="badge bg-secondary ms-1" id="forecastTempDeltaBadge" style="font-size: 11px;">--</span>
+            </div>
+            <div class="border-start ps-3 border-light-subtle">
+              <span class="fs-3 fw-bold" style="color: #0284c7;" id="forecastPredHum">--.-</span>
+              <span class="text-muted small">%</span>
+              <span class="badge bg-secondary ms-1" id="forecastHumDeltaBadge" style="font-size: 11px;">--</span>
+            </div>
+          </div>
+        </div>
+        <div class="text-muted small mt-2 pt-2 border-top border-light-subtle">
+          <span>80% Uncertainty Band:</span>
+          <span class="fw-semibold text-dark ms-1" id="forecastIntervalText">Awaiting data</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Metric 3: Backtest Accuracy vs Persistence -->
+    <div class="col-12 col-md-4">
+      <div class="p-3 rounded border border-light bg-light bg-opacity-25 h-100 d-flex flex-column justify-content-between">
+        <div>
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <span class="text-muted small fw-semibold text-uppercase tracking-wider">Backtest Accuracy</span>
+            <span class="badge bg-info bg-opacity-10 text-info fw-semibold" id="forecastBacktestSamples" style="font-size: 10px;">-- Samples</span>
+          </div>
+          <div class="d-flex justify-content-between align-items-center my-1">
+            <div>
+              <div class="text-muted" style="font-size: 11px;">Temp MAE / RMSE:</div>
+              <div class="fw-bold text-dark fs-6" id="forecastTempMetrics">-- / --</div>
+            </div>
+            <div class="border-start ps-3 border-light-subtle">
+              <div class="text-muted" style="font-size: 11px;">Humidity MAE:</div>
+              <div class="fw-bold text-dark fs-6" id="forecastHumMetrics">-- / --</div>
+            </div>
+          </div>
+        </div>
+        <div class="text-muted small mt-2 pt-2 border-top border-light-subtle text-truncate" id="forecastSkillText">
+          Rolling origin validation against persistence baseline
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Trajectory Chart Box -->
+  <div class="chart-box-sunset" style="position: relative; height: 260px;">
+    <canvas id="forecastTrajectoryChart" aria-label="Microclimate 15-minute forecast trajectory chart"></canvas>
+    <div class="chart-empty-overlay d-none" id="forecastEmptyOverlay">
+      <div class="chart-empty-icon" aria-hidden="true">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>
+      </div>
+      <div class="chart-empty-title" id="forecastEmptyTitle">Forecast Unavailable</div>
+      <div class="chart-empty-sub" id="forecastEmptySub">Awaiting at least 15 minutes of continuous sensor telemetry.</div>
+    </div>
+  </div>
+
+  <!-- Disclaimer Footer -->
+  <div class="alert alert-light border border-light-subtle bg-light bg-opacity-50 text-muted small mt-3 mb-0 py-2 px-3 d-flex align-items-center gap-2">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="flex-shrink-0 text-warning"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    <span>
+      <strong>Notice:</strong> Experimental local forecast for ambient environmental awareness only. DHT11 sensor hardware accuracy is ±2°C and ±5% RH, bounding forecast precision. Not certified for official meteorological forecasting, precipitation prediction, storm tracking, or OSHA/medical heat-safety assessment.
+    </span>
+  </div>
+</div>
+
 <!-- Section 4: Hardware Pipeline, Station Coordinates & Cloud Persistence -->
 <div class="row g-3 mb-4">
   <!-- Status 1: Dedicated DHT11 Sensor Pipeline -->
