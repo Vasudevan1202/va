@@ -213,3 +213,105 @@ Switches runtime mode between `demo` and `live`.
   "mode": "live"
 }
 ```
+
+---
+
+## 8. Ingestion Endpoints (Raspberry Pi & Sensors)
+
+### `POST /api/ingest/dht11`
+Dedicated secure ingestion endpoint for Raspberry Pi receiving DHT11 temperature & relative humidity readings from an Arduino Mega 2560.
+
+**Authentication:**
+- Header: `Authorization: Bearer <VA_DHT11_INGEST_KEY>` (or `VA_INGEST_KEY`)
+- Protected against timing attacks via `hmac.compare_digest`.
+- In production/live environments, fails closed with HTTP 401 if unconfigured or matching known placeholders.
+
+**Request Headers:**
+```http
+POST /api/ingest/dht11 HTTP/1.1
+Host: va.developerhut.in
+Authorization: Bearer <YOUR_SECRET_TOKEN>
+Content-Type: application/json
+```
+
+**Request Body (JSON):**
+```json
+{
+  "temperature_c": 33.0,
+  "humidity_percent": 46.0,
+  "timestamp": "2026-10-29T10:20:00Z",
+  "source": "raspberry_pi_dht11"
+}
+```
+
+**Field Specifications:**
+| Field | Type | Required | Description / Valid Bounds |
+| :--- | :--- | :--- | :--- |
+| `temperature_c` | Float | **Yes** | Ambient temperature in Celsius (-20.0°C to 60.0°C) |
+| `humidity_percent` | Float | **Yes** | Relative humidity in percentage (0.0% to 100.0%) |
+| `timestamp` | String | No | ISO 8601 UTC timestamp (defaults to current server time) |
+| `source` | String | No | Attribution identifier (default: `"dht11"`, max 64 chars) |
+
+**Response (201 Created):**
+```json
+{
+  "status": "success",
+  "id": 142,
+  "temperature_c": 33.0,
+  "humidity_percent": 46.0,
+  "heat_index_c": 38.2,
+  "timestamp": "2026-10-29T10:20:00Z",
+  "source": "raspberry_pi_dht11",
+  "heat_risk": {
+    "heat_index_c": 38.2,
+    "category": "Extreme Caution",
+    "badge_class": "warning",
+    "advisory": "Heat cramps and heat exhaustion possible with continued exposure.",
+    "formula_basis": "NOAA / NWS Rothfusz 9-parameter polynomial regression.",
+    "is_applicable": true,
+    "is_simulated": false
+  }
+}
+```
+
+**Error Responses:**
+- `400 Bad Request`: Missing required fields, non-numeric data, `NaN`/`Infinity`, or out-of-range sensor readings.
+- `401 Unauthorized`: Missing or malformed `Authorization` header, unconfigured server secret, or invalid bearer token.
+- `429 Too Many Requests`: Client IP exceeded the sliding-window ingestion rate limit (default 60 req/min).
+
+---
+
+### `POST /api/telemetry`
+General multi-sensor ingestion endpoint supporting BMP280, BME280, and GPS coordinates.
+
+**Authentication:**
+- Header: `Authorization: Bearer <VA_INGEST_KEY>`
+
+**Request Body (JSON):**
+```json
+{
+  "temperature_c": 24.5,
+  "pressure_hpa": 1013.25,
+  "humidity_pct": 55.0,
+  "latitude": 12.9716,
+  "longitude": 77.5946,
+  "source": "hardware"
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "status": "success",
+  "id": 143,
+  "temperature_c": 24.5,
+  "pressure_hpa": 1013.25,
+  "humidity_pct": 55.0,
+  "heat_index_c": null,
+  "source": "hardware",
+  "heat_risk": {
+    "category": "Normal",
+    "is_applicable": false
+  }
+}
+```

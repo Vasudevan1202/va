@@ -25,9 +25,14 @@ def init_db(db_path: Optional[str] = None) -> None:
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     timestamp TEXT NOT NULL,
                     temperature_c REAL NOT NULL,
-                    pressure_hpa REAL NOT NULL,
+                    pressure_hpa REAL,
                     source TEXT NOT NULL,
-                    validity_status TEXT NOT NULL
+                    validity_status TEXT NOT NULL,
+                    humidity_pct REAL,
+                    heat_index_c REAL,
+                    latitude REAL,
+                    longitude REAL,
+                    sensor_type TEXT DEFAULT 'bmp280'
                 );
 
                 CREATE INDEX IF NOT EXISTS idx_readings_timestamp ON readings(timestamp);
@@ -64,20 +69,82 @@ def init_db(db_path: Optional[str] = None) -> None:
                     """,
                     (Config.DEFAULT_TEMPERATURE_THRESHOLD_C, Config.SAMPLING_INTERVAL_SECONDS)
                 )
+
+            # Auto-migrate existing databases to add new columns if missing
+            cursor.execute("PRAGMA table_info(readings);")
+            cols_info = {row["name"]: dict(row) for row in cursor.fetchall()}
+
+            # If existing table has NOT NULL constraint on pressure_hpa, migrate to make it nullable for DHT11
+            if cols_info.get("pressure_hpa", {}).get("notnull") == 1:
+                cursor.execute("""
+                    CREATE TABLE readings_mig_tmp (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        timestamp TEXT NOT NULL,
+                        temperature_c REAL NOT NULL,
+                        pressure_hpa REAL,
+                        source TEXT NOT NULL,
+                        validity_status TEXT NOT NULL,
+                        humidity_pct REAL,
+                        heat_index_c REAL,
+                        latitude REAL,
+                        longitude REAL,
+                        sensor_type TEXT DEFAULT 'bmp280'
+                    );
+                """)
+                col_names = [c for c in ("id", "timestamp", "temperature_c", "pressure_hpa", "source", "validity_status", "humidity_pct", "heat_index_c", "latitude", "longitude", "sensor_type") if c in cols_info]
+                cols_str = ", ".join(col_names)
+                cursor.execute(f"INSERT INTO readings_mig_tmp ({cols_str}) SELECT {cols_str} FROM readings;")
+                cursor.execute("DROP TABLE readings;")
+                cursor.execute("ALTER TABLE readings_mig_tmp RENAME TO readings;")
+                cursor.execute("CREATE INDEX IF NOT EXISTS idx_readings_timestamp ON readings(timestamp);")
+                cursor.execute("CREATE INDEX IF NOT EXISTS idx_readings_source ON readings(source);")
+                cursor.execute("PRAGMA table_info(readings);")
+                cols_info = {row["name"]: dict(row) for row in cursor.fetchall()}
+
+            for col_name, col_type in [("humidity_pct", "REAL"), ("heat_index_c", "REAL"), ("latitude", "REAL"), ("longitude", "REAL"), ("sensor_type", "TEXT")]:
+                if col_name not in cols_info:
+                    cursor.execute(f"ALTER TABLE readings ADD COLUMN {col_name} {col_type};")
     finally:
         conn.close()
 
 def insert_reading(
     temperature_c: float,
-    pressure_hpa: float,
+    pressure_hpa: Optional[float] = None,
     source: str = "hardware",
     validity_status: str = "valid",
     timestamp: Optional[str] = None,
+    humidity_pct: Optional[float] = None,
+    heat_index_c: Optional[float] = None,
+    latitude: Optional[float] = None,
+    longitude: Optional[float] = None,
+    sensor_type: Optional[str] = None,
     db_path: Optional[str] = None
 ) -> int:
     """Inserts a new sensor reading into the database."""
     if timestamp is None:
         timestamp = datetime.now(timezone.utc).isoformat()
+
+    # Automatically compute heat index via NOAA Rothfusz formula if humidity is provided and heat index not pre-computed
+    if heat_index_c is None and humidity_pct is not None:
+        try:
+            from weather_service import WeatherService
+            heat_index_c = WeatherService.compute_heat_index(temperature_c, humidity_pct)
+        except Exception:
+            heat_index_c = None
+
+    press_val = round(pressure_hpa, 2) if pressure_hpa is not None else None
+    hum_val = round(humidity_pct, 1) if humidity_pct is not None else None
+    hi_val = round(heat_index_c, 1) if heat_index_c is not None else None
+    lat_val = round(latitude, 6) if latitude is not None else None
+    lon_val = round(longitude, 6) if longitude is not None else None
+
+    if sensor_type is None:
+        if source and "dht11" in source.lower():
+            sensor_type = "dht11"
+        elif press_val is not None:
+            sensor_type = "bmp280"
+        else:
+            sensor_type = "dht11" if hum_val is not None else "generic"
 
     conn = get_connection(db_path)
     try:
@@ -85,10 +152,24 @@ def insert_reading(
             cursor = conn.cursor()
             cursor.execute(
                 """
-                INSERT INTO readings (timestamp, temperature_c, pressure_hpa, source, validity_status)
-                VALUES (?, ?, ?, ?, ?);
+                INSERT INTO readings (
+                    timestamp, temperature_c, pressure_hpa, source, validity_status,
+                    humidity_pct, heat_index_c, latitude, longitude, sensor_type
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
                 """,
-                (timestamp, round(temperature_c, 2), round(pressure_hpa, 2), source, validity_status)
+                (
+                    timestamp,
+                    round(temperature_c, 2),
+                    press_val,
+                    source,
+                    validity_status,
+                    hum_val,
+                    hi_val,
+                    lat_val,
+                    lon_val,
+                    sensor_type
+                )
             )
             return cursor.lastrowid
     finally:
@@ -101,8 +182,49 @@ def get_latest_reading(db_path: Optional[str] = None) -> Optional[Dict[str, Any]
         cursor = conn.cursor()
         cursor.execute(
             """
-            SELECT id, timestamp, temperature_c, pressure_hpa, source, validity_status
+            SELECT id, timestamp, temperature_c, pressure_hpa, source, validity_status,
+                   humidity_pct, heat_index_c, latitude, longitude, sensor_type
             FROM readings
+            ORDER BY id DESC
+            LIMIT 1;
+            """
+        )
+        row = cursor.fetchone()
+        return dict(row) if row else None
+    finally:
+        conn.close()
+
+def get_latest_dht11_reading(db_path: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    """Retrieves the most recent DHT11 reading (temperature & humidity from Raspberry Pi/Arduino)."""
+    conn = get_connection(db_path)
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT id, timestamp, temperature_c, pressure_hpa, source, validity_status,
+                   humidity_pct, heat_index_c, latitude, longitude, sensor_type
+            FROM readings
+            WHERE sensor_type = 'dht11' OR source LIKE '%dht11%' OR (humidity_pct IS NOT NULL AND pressure_hpa IS NULL)
+            ORDER BY id DESC
+            LIMIT 1;
+            """
+        )
+        row = cursor.fetchone()
+        return dict(row) if row else None
+    finally:
+        conn.close()
+
+def get_latest_bmp280_reading(db_path: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    """Retrieves the most recent BMP280 reading (ambient temperature & barometric pressure)."""
+    conn = get_connection(db_path)
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT id, timestamp, temperature_c, pressure_hpa, source, validity_status,
+                   humidity_pct, heat_index_c, latitude, longitude, sensor_type
+            FROM readings
+            WHERE (sensor_type IN ('bmp280', 'bme280') OR pressure_hpa IS NOT NULL)
             ORDER BY id DESC
             LIMIT 1;
             """
@@ -119,7 +241,8 @@ def get_recent_readings(limit: int = 20, db_path: Optional[str] = None) -> List[
         cursor = conn.cursor()
         cursor.execute(
             """
-            SELECT id, timestamp, temperature_c, pressure_hpa, source, validity_status
+            SELECT id, timestamp, temperature_c, pressure_hpa, source, validity_status,
+                   humidity_pct, heat_index_c, latitude, longitude, sensor_type
             FROM readings
             ORDER BY id DESC
             LIMIT ?;
@@ -154,7 +277,8 @@ def get_readings_range(range_code: str = "24h", db_path: Optional[str] = None) -
         cursor = conn.cursor()
         cursor.execute(
             """
-            SELECT id, timestamp, temperature_c, pressure_hpa, source, validity_status
+            SELECT id, timestamp, temperature_c, pressure_hpa, source, validity_status,
+                   humidity_pct, heat_index_c, latitude, longitude, sensor_type
             FROM readings
             WHERE timestamp >= ? AND validity_status = 'valid'
             ORDER BY timestamp ASC;
@@ -197,7 +321,8 @@ def get_readings_history(
 
         cursor.execute(
             f"""
-            SELECT id, timestamp, temperature_c, pressure_hpa, source, validity_status
+            SELECT id, timestamp, temperature_c, pressure_hpa, source, validity_status,
+                   humidity_pct, heat_index_c, latitude, longitude, sensor_type
             FROM readings
             {where_sql}
             ORDER BY timestamp DESC
@@ -239,7 +364,8 @@ def get_readings_for_export(
 
         cursor.execute(
             f"""
-            SELECT id, timestamp, temperature_c, pressure_hpa, source, validity_status
+            SELECT id, timestamp, temperature_c, pressure_hpa, source, validity_status,
+                   humidity_pct, heat_index_c, latitude, longitude, sensor_type
             FROM readings
             {where_sql}
             ORDER BY timestamp ASC;
@@ -266,6 +392,10 @@ def get_today_stats(db_path: Optional[str] = None) -> Dict[str, Any]:
                 MIN(pressure_hpa) as min_pressure,
                 MAX(pressure_hpa) as max_pressure,
                 AVG(pressure_hpa) as avg_pressure,
+                MIN(humidity_pct) as min_humidity,
+                MAX(humidity_pct) as max_humidity,
+                AVG(humidity_pct) as avg_humidity,
+                MAX(heat_index_c) as max_heat_index,
                 MAX(timestamp) as last_collection_time
             FROM readings
             WHERE timestamp >= ? AND validity_status = 'valid';
@@ -282,6 +412,10 @@ def get_today_stats(db_path: Optional[str] = None) -> Dict[str, Any]:
                 "min_pressure": round(row["min_pressure"], 2) if row["min_pressure"] is not None else None,
                 "max_pressure": round(row["max_pressure"], 2) if row["max_pressure"] is not None else None,
                 "avg_pressure": round(row["avg_pressure"], 2) if row["avg_pressure"] is not None else None,
+                "min_humidity": round(row["min_humidity"], 1) if row["min_humidity"] is not None else None,
+                "max_humidity": round(row["max_humidity"], 1) if row["max_humidity"] is not None else None,
+                "avg_humidity": round(row["avg_humidity"], 1) if row["avg_humidity"] is not None else None,
+                "max_heat_index": round(row["max_heat_index"], 1) if row["max_heat_index"] is not None else None,
                 "last_collection_time": row["last_collection_time"]
             }
         return {
@@ -292,6 +426,10 @@ def get_today_stats(db_path: Optional[str] = None) -> Dict[str, Any]:
             "min_pressure": None,
             "max_pressure": None,
             "avg_pressure": None,
+            "min_humidity": None,
+            "max_humidity": None,
+            "avg_humidity": None,
+            "max_heat_index": None,
             "last_collection_time": None
         }
     finally:
@@ -478,12 +616,29 @@ def get_db_stats(db_path: Optional[str] = None) -> Dict[str, Any]:
         readings_count = cursor.fetchone()["count"]
         cursor.execute("SELECT COUNT(*) as count FROM alerts;")
         alerts_count = cursor.fetchone()["count"]
+
+        # Count DHT11 readings
+        dht11_count = 0
+        try:
+            cursor.execute("SELECT COUNT(*) as count FROM readings WHERE sensor_type = 'dht11' OR source LIKE '%dht11%';")
+            dht11_count = cursor.fetchone()["count"]
+        except Exception:
+            pass
+
+        storage_backend = Config.get_storage_backend()
+        is_persistent = Config.is_storage_persistent()
+        persistence_notice = Config.get_persistence_notice()
+
         return {
             "file_size_bytes": file_size_bytes,
             "file_size_kb": round(file_size_bytes / 1024, 2),
             "readings_count": readings_count,
+            "dht11_readings_count": dht11_count,
             "alerts_count": alerts_count,
-            "status": "healthy"
+            "status": "healthy",
+            "storage_backend": storage_backend,
+            "is_persistent": is_persistent,
+            "persistence_notice": persistence_notice
         }
     finally:
         conn.close()

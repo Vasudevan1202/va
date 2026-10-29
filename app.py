@@ -1,8 +1,25 @@
 import io
 import csv
+import math
+import hmac
+import time
+import secrets
 import logging
+import threading
+from functools import wraps
 from datetime import datetime, timezone
-from flask import Flask, jsonify, request, render_template, redirect, url_for, Response, send_from_directory
+from typing import Tuple, Optional
+from flask import (
+    Flask,
+    jsonify,
+    request,
+    render_template,
+    redirect,
+    url_for,
+    Response,
+    send_from_directory,
+    session
+)
 from config import Config
 import database
 from sensor_service import SensorService
@@ -15,6 +32,42 @@ logging.basicConfig(
 )
 logger = logging.getLogger("virtual_atmosphere.app")
 
+# Thread-safe in-memory sliding-window rate limiter for telemetry ingestion
+_telemetry_rate_lock = threading.Lock()
+_telemetry_rate_records = {}  # Dict[str, list[float]]
+
+def is_telemetry_rate_limited(client_ip: str, limit: int = 60, window_seconds: float = 60.0) -> Tuple[bool, int]:
+    """
+    Evaluates process-local sliding-window rate limit for telemetry ingestion.
+    Returns (is_limited, retry_after_seconds).
+
+    Architectural Note:
+    On serverless platforms like Vercel, processes are ephemeral and memory is
+    isolated per container. In-memory rate limiting prevents burst floods within
+    an individual active worker process. Distributed production-grade rate limiting
+    across distributed serverless invocations requires an edge proxy or datastore
+    (such as Cloudflare WAF, Upstash Redis, or Vercel Edge Middleware).
+    """
+    now = time.time()
+    cutoff = now - window_seconds
+    with _telemetry_rate_lock:
+        # Prevent unbounded memory accumulation: prune stale client records if dictionary grows
+        if len(_telemetry_rate_records) > 1000:
+            stale_keys = [k for k, ts in _telemetry_rate_records.items() if not ts or ts[-1] <= cutoff]
+            for k in stale_keys:
+                del _telemetry_rate_records[k]
+
+        timestamps = _telemetry_rate_records.get(client_ip, [])
+        valid_timestamps = [t for t in timestamps if t > cutoff]
+        if len(valid_timestamps) >= limit:
+            oldest_in_window = valid_timestamps[0]
+            retry_after = max(1, int(window_seconds - (now - oldest_in_window)))
+            _telemetry_rate_records[client_ip] = valid_timestamps
+            return True, retry_after
+        valid_timestamps.append(now)
+        _telemetry_rate_records[client_ip] = valid_timestamps
+        return False, 0
+
 def create_app(test_config=None) -> Flask:
     """Application factory for Virtual Atmosphere."""
     base_dir = Config.BASE_DIR
@@ -25,10 +78,17 @@ def create_app(test_config=None) -> Flask:
         static_url_path="/static"
     )
 
+    app.config.from_object(Config)
     if test_config:
         app.config.from_mapping(test_config)
-    else:
-        app.config.from_object(Config)
+
+    # Configure session security settings
+    secret_key = app.config.get("SECRET_KEY") or Config.SECRET_KEY or secrets.token_hex(32)
+    app.secret_key = secret_key
+    app.config["SECRET_KEY"] = secret_key
+    app.config["SESSION_COOKIE_HTTPONLY"] = app.config.get("SESSION_COOKIE_HTTPONLY", Config.SESSION_COOKIE_HTTPONLY)
+    app.config["SESSION_COOKIE_SAMESITE"] = app.config.get("SESSION_COOKIE_SAMESITE", Config.SESSION_COOKIE_SAMESITE)
+    app.config["SESSION_COOKIE_SECURE"] = app.config.get("SESSION_COOKIE_SECURE", Config.SESSION_COOKIE_SECURE)
 
     # Initialize SQLite database
     db_path = app.config.get("DATABASE_PATH", Config.DATABASE_PATH)
@@ -53,9 +113,58 @@ def create_app(test_config=None) -> Flask:
     if not app.config.get("TESTING", False) and not Config.IS_VERCEL:
         sensor_service.start()
 
-    # Ensure fresh telemetry on requests in serverless environments
+    # Mutation authorization decorator (session CSRF or Control Key)
+    def require_mutation_auth(f):
+        """
+        Protects public mutation endpoints against unauthorized modification and CSRF attacks.
+        Accepts:
+        1. Session CSRF Token: Header 'X-CSRF-Token' or body 'csrf_token' matching session['csrf_token'].
+        2. Programmatic Control Key: Header 'Authorization: Bearer <CONTROL_KEY>' or 'X-VA-Control-Key'.
+        Fails closed with HTTP 403 Forbidden if neither valid credential is provided.
+        """
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            # 1. Programmatic Control Key check
+            control_key = Config.get_control_key()
+            auth_header = request.headers.get("Authorization", "").strip()
+            custom_header = request.headers.get("X-VA-Control-Key", "").strip()
+
+            token = None
+            if auth_header.startswith("Bearer "):
+                token = auth_header.split(" ", 1)[1].strip()
+            elif custom_header:
+                token = custom_header
+
+            if token and control_key:
+                if hmac.compare_digest(token.encode("utf-8"), control_key.encode("utf-8")):
+                    return f(*args, **kwargs)
+
+            # 2. Browser Session CSRF Token check
+            session_token = session.get("csrf_token")
+            request_token = request.headers.get("X-CSRF-Token", "").strip()
+            if not request_token and request.is_json:
+                payload = request.get_json(silent=True)
+                if isinstance(payload, dict):
+                    request_token = str(payload.get("csrf_token", "")).strip()
+
+            if session_token and request_token:
+                if hmac.compare_digest(request_token.encode("utf-8"), session_token.encode("utf-8")):
+                    return f(*args, **kwargs)
+
+            logger.warning(f"Unauthorized mutation attempt on {request.path} from {request.remote_addr}")
+            return jsonify({
+                "success": False,
+                "error": "Unauthorized mutation: Valid CSRF token (X-CSRF-Token) or Control Key required."
+            }), 403
+
+        return decorated_function
+
+    # Ensure fresh telemetry on requests in serverless environments and initialize session CSRF
     @app.before_request
-    def ensure_fresh_telemetry():
+    def ensure_session_and_telemetry():
+        if "csrf_token" not in session:
+            session["csrf_token"] = secrets.token_hex(24)
+
         if not app.config.get("TESTING", False):
             if hasattr(app, "sensor_service") and app.sensor_service and app.sensor_service.mode == "demo":
                 if not request.path.startswith("/static"):
@@ -72,7 +181,8 @@ def create_app(test_config=None) -> Flask:
             "TAGLINE": Config.TAGLINE,
             "VERSION": Config.VERSION,
             "ASSET_VERSION": getattr(Config, "ASSET_VERSION", "1.0.1"),
-            "app_mode": app.sensor_service.mode
+            "app_mode": app.sensor_service.mode,
+            "csrf_token": session.get("csrf_token", "")
         }
 
     # ==========================================
@@ -167,21 +277,379 @@ def create_app(test_config=None) -> Flask:
 
         temp_trend = 0.0
         press_trend = 0.0
+        humidity_trend = 0.0
         if latest and previous:
             temp_trend = round(latest["temperature_c"] - previous["temperature_c"], 2)
-            press_trend = round(latest["pressure_hpa"] - previous["pressure_hpa"], 2)
+            if latest.get("pressure_hpa") is not None and previous.get("pressure_hpa") is not None:
+                press_trend = round(latest["pressure_hpa"] - previous["pressure_hpa"], 2)
+            if latest.get("humidity_pct") is not None and previous.get("humidity_pct") is not None:
+                humidity_trend = round(latest["humidity_pct"] - previous["humidity_pct"], 1)
+
+        latest_dht11 = database.get_latest_dht11_reading(db_path=db_path)
+        latest_bmp280 = database.get_latest_bmp280_reading(db_path=db_path)
+
+        from weather_service import WeatherService
+        heat_risk = None
+        if latest:
+            heat_risk = WeatherService.get_heat_risk_assessment(
+                temp_c=latest.get("temperature_c"),
+                humidity_pct=latest.get("humidity_pct"),
+                source=latest.get("source", "simulated")
+            )
 
         return jsonify({
             "latest": latest,
             "previous": previous,
+            "dht11": latest_dht11,
+            "bmp280": latest_bmp280,
             "trend": {
                 "temperature_delta_c": temp_trend,
-                "pressure_delta_hpa": press_trend
+                "pressure_delta_hpa": press_trend,
+                "humidity_delta_pct": humidity_trend
             },
             "today_stats": today_stats,
+            "heat_risk": heat_risk,
             "alert": alert_info,
             "sensor": sensor_status
         }), 200
+
+    @app.route("/api/ingest/dht11", methods=["POST"])
+    def api_dht11_ingest():
+        """
+        Dedicated secure ingestion endpoint for Raspberry Pi / Arduino DHT11 sensor readings.
+        Authentication: Authorization: Bearer <VA_DHT11_INGEST_KEY> (or VA_INGEST_KEY)
+        Accepts JSON:
+            temperature_c: numeric (valid range: -20°C to 60°C)
+            humidity_percent: numeric (valid range: 0% to 100%)
+            timestamp: optional ISO 8601 string (defaults to current UTC time)
+            source: optional string attribution (default: 'dht11')
+        """
+        from weather_service import WeatherService
+
+        # 1. Rate Limiting Check (sliding window per client IP)
+        if Config.IS_VERCEL:
+            client_ip = request.headers.get("x-vercel-forwarded-for") or request.headers.get("X-Forwarded-For", request.remote_addr or "127.0.0.1").split(",")[0].strip()
+        else:
+            client_ip = request.remote_addr or "127.0.0.1"
+        limit = app.config.get("TELEMETRY_RATE_LIMIT_PER_MINUTE", Config.TELEMETRY_RATE_LIMIT_PER_MINUTE)
+        is_limited, retry_after = is_telemetry_rate_limited(client_ip, limit=limit, window_seconds=60.0)
+        if is_limited:
+            response = jsonify({
+                "status": "error",
+                "error": f"Rate limit exceeded. Maximum {limit} submissions per minute.",
+                "retry_after": retry_after
+            })
+            response.status_code = 429
+            response.headers["Retry-After"] = str(retry_after)
+            return response
+
+        # 2. Authentication Verification (Fail-Closed)
+        auth_header = request.headers.get("Authorization", "").strip()
+        custom_header = request.headers.get("X-VA-DHT11-Key", "").strip() or request.headers.get("X-VA-Ingest-Key", "").strip()
+
+        token = None
+        if auth_header.startswith("Bearer "):
+            token = auth_header.split(" ", 1)[1].strip()
+        elif custom_header:
+            token = custom_header
+
+        if not token:
+            return jsonify({
+                "status": "error",
+                "error": "Missing or malformed Authorization header. Expected 'Authorization: Bearer <token>'"
+            }), 401
+
+        expected = Config.get_dht11_ingest_key()
+        if not expected:
+            logger.error("DHT11 telemetry ingestion rejected: Ingestion key is unconfigured or a known placeholder.")
+            return jsonify({
+                "status": "error",
+                "error": "Telemetry ingestion unauthorized (unconfigured secret)"
+            }), 401
+
+        if not hmac.compare_digest(token.encode("utf-8"), expected.encode("utf-8")):
+            return jsonify({"status": "error", "error": "Invalid ingestion credentials"}), 401
+
+        # 3. Payload Extraction & Structural Validation
+        payload = request.get_json(silent=True)
+        if not payload or not isinstance(payload, dict):
+            return jsonify({"status": "error", "error": "Invalid or missing JSON payload"}), 400
+
+        # Required fields: temperature_c and humidity_percent (accept humidity_pct as alias)
+        if "temperature_c" not in payload:
+            return jsonify({
+                "status": "error",
+                "error": "Missing required field: 'temperature_c'"
+            }), 400
+
+        hum_key = "humidity_percent" if "humidity_percent" in payload else ("humidity_pct" if "humidity_pct" in payload else None)
+        if hum_key is None:
+            return jsonify({
+                "status": "error",
+                "error": "Missing required field: 'humidity_percent'"
+            }), 400
+
+        try:
+            temp_c = float(payload["temperature_c"])
+        except (ValueError, TypeError):
+            return jsonify({"status": "error", "error": "'temperature_c' must be a numeric value"}), 400
+
+        try:
+            humidity_percent = float(payload[hum_key])
+        except (ValueError, TypeError):
+            return jsonify({"status": "error", "error": "'humidity_percent' must be a numeric value"}), 400
+
+        # Reject NaN and Infinity
+        if math.isnan(temp_c) or math.isinf(temp_c):
+            return jsonify({"status": "error", "error": "'temperature_c' must not be NaN or Infinity"}), 400
+
+        if math.isnan(humidity_percent) or math.isinf(humidity_percent):
+            return jsonify({"status": "error", "error": "'humidity_percent' must not be NaN or Infinity"}), 400
+
+        # Meteorological and Physical Sensor Bounds Validation
+        valid, msg = WeatherService.validate_dht11_reading(temp_c, humidity_percent)
+        if not valid:
+            return jsonify({"status": "error", "error": f"Invalid sensor reading: {msg}"}), 400
+
+        # Validate timestamp
+        raw_ts = payload.get("timestamp")
+        if raw_ts:
+            if not isinstance(raw_ts, str):
+                return jsonify({"status": "error", "error": "'timestamp' must be an ISO 8601 string"}), 400
+            try:
+                datetime.fromisoformat(raw_ts.replace("Z", "+00:00"))
+                timestamp = raw_ts
+            except Exception:
+                return jsonify({"status": "error", "error": "Invalid 'timestamp' format. Must be ISO 8601 string"}), 400
+        else:
+            timestamp = datetime.now(timezone.utc).isoformat()
+
+        # Validate source
+        raw_source = payload.get("source", "dht11")
+        if not isinstance(raw_source, str) or not raw_source.strip():
+            return jsonify({"status": "error", "error": "'source' must be a non-empty string"}), 400
+        source = raw_source.strip()[:64]
+
+        # Compute heat index via NOAA Rothfusz formula
+        heat_index_c = WeatherService.compute_heat_index(temp_c, humidity_percent)
+        heat_risk = WeatherService.get_heat_risk_assessment(temp_c, humidity_percent, source)
+
+        # Store durably in database
+        record_id = database.insert_reading(
+            temperature_c=temp_c,
+            pressure_hpa=None,
+            source=source,
+            validity_status="valid",
+            timestamp=timestamp,
+            humidity_pct=humidity_percent,
+            heat_index_c=heat_index_c,
+            sensor_type="dht11",
+            db_path=db_path
+        )
+
+        # Evaluate safety alerts for temperature threshold
+        AlertService.evaluate_reading(temp_c, db_path=db_path)
+
+        # Update in-memory cache in sensor_service
+        dht11_record = {
+            "id": record_id,
+            "timestamp": timestamp,
+            "temperature_c": round(temp_c, 2),
+            "humidity_percent": round(humidity_percent, 1),
+            "heat_index_c": heat_index_c,
+            "source": source,
+            "validity_status": "valid"
+        }
+        try:
+            if hasattr(app, "sensor_service") and app.sensor_service:
+                app.sensor_service.update_dht11(dht11_record)
+        except Exception as e:
+            logger.debug(f"Could not update sensor_service DHT11 state: {e}")
+
+        return jsonify({
+            "status": "success",
+            "id": record_id,
+            "timestamp": timestamp,
+            "temperature_c": round(temp_c, 2),
+            "humidity_percent": round(humidity_percent, 1),
+            "heat_index_c": heat_index_c,
+            "source": source,
+            "heat_risk": heat_risk
+        }), 201
+
+    @app.route("/api/telemetry", methods=["POST"])
+    def api_telemetry_ingest():
+        """
+        Secure ingestion endpoint for Raspberry Pi remote telemetry.
+        Authentication: Authorization: Bearer <INGEST_KEY>
+        Accepts: JSON payload with temperature_c, pressure_hpa, optional humidity_pct,
+                 optional latitude/longitude, optional source ('hardware' or 'simulated').
+        """
+        from weather_service import WeatherService
+
+        # Rate Limiting Check (sliding window per client IP)
+        if Config.IS_VERCEL:
+            # When behind Vercel edge reverse proxy, trust forwarded header
+            client_ip = request.headers.get("x-vercel-forwarded-for") or request.headers.get("X-Forwarded-For", request.remote_addr or "127.0.0.1").split(",")[0].strip()
+        else:
+            # In direct/local deployments, use socket remote_addr to prevent arbitrary X-Forwarded-For spoofing
+            client_ip = request.remote_addr or "127.0.0.1"
+        limit = app.config.get("TELEMETRY_RATE_LIMIT_PER_MINUTE", Config.TELEMETRY_RATE_LIMIT_PER_MINUTE)
+        is_limited, retry_after = is_telemetry_rate_limited(client_ip, limit=limit, window_seconds=60.0)
+        if is_limited:
+            response = jsonify({
+                "status": "error",
+                "error": f"Rate limit exceeded. Maximum {limit} telemetry submissions per minute.",
+                "retry_after": retry_after
+            })
+            response.status_code = 429
+            response.headers["Retry-After"] = str(retry_after)
+            return response
+
+        # Ingestion Authentication Verification (Fail-Closed)
+        auth_header = request.headers.get("Authorization", "")
+        if not auth_header.startswith("Bearer "):
+            return jsonify({"status": "error", "error": "Missing or malformed Authorization header"}), 401
+
+        token = auth_header.split(" ", 1)[1].strip()
+        expected = Config.get_ingest_key()
+        if not expected:
+            logger.error("Telemetry ingestion rejected: Ingestion key is unconfigured or a known placeholder.")
+            return jsonify({"status": "error", "error": "Telemetry ingestion unauthorized (unconfigured secret)"}), 401
+
+        if not hmac.compare_digest(token.encode("utf-8"), expected.encode("utf-8")):
+            return jsonify({"status": "error", "error": "Invalid ingestion credentials"}), 401
+
+        payload = request.get_json(silent=True)
+        if not payload or not isinstance(payload, dict):
+            return jsonify({"status": "error", "error": "Invalid or missing JSON payload"}), 400
+
+        # Required fields
+        if "temperature_c" not in payload or "pressure_hpa" not in payload:
+            return jsonify({
+                "status": "error",
+                "error": "Missing required fields: 'temperature_c' and 'pressure_hpa' are mandatory"
+            }), 400
+
+        try:
+            temp_c = float(payload["temperature_c"])
+            pressure_hpa = float(payload["pressure_hpa"])
+        except (ValueError, TypeError):
+            return jsonify({"status": "error", "error": "temperature_c and pressure_hpa must be numeric"}), 400
+
+        # Reject NaN and Infinity
+        if math.isnan(temp_c) or math.isinf(temp_c) or math.isnan(pressure_hpa) or math.isinf(pressure_hpa):
+            return jsonify({"status": "error", "error": "temperature_c and pressure_hpa must not be NaN or Infinity"}), 400
+
+        # Optional fields
+        humidity_pct = None
+        if payload.get("humidity_pct") is not None:
+            try:
+                humidity_pct = float(payload["humidity_pct"])
+            except (ValueError, TypeError):
+                return jsonify({"status": "error", "error": "humidity_pct must be numeric"}), 400
+            if math.isnan(humidity_pct) or math.isinf(humidity_pct):
+                return jsonify({"status": "error", "error": "humidity_pct must not be NaN or Infinity"}), 400
+
+        lat = None
+        if payload.get("latitude") is not None:
+            try:
+                lat = float(payload["latitude"])
+            except (ValueError, TypeError):
+                return jsonify({"status": "error", "error": "latitude must be numeric"}), 400
+            if math.isnan(lat) or math.isinf(lat):
+                return jsonify({"status": "error", "error": "latitude must not be NaN or Infinity"}), 400
+
+        lon = None
+        if payload.get("longitude") is not None:
+            try:
+                lon = float(payload["longitude"])
+            except (ValueError, TypeError):
+                return jsonify({"status": "error", "error": "longitude must be numeric"}), 400
+            if math.isnan(lon) or math.isinf(lon):
+                return jsonify({"status": "error", "error": "longitude must not be NaN or Infinity"}), 400
+
+        raw_source = payload.get("source", "hardware")
+        if not isinstance(raw_source, str) or raw_source.strip().lower() not in ("hardware", "simulated", "demo"):
+            return jsonify({
+                "status": "error",
+                "error": "Invalid source: must be 'hardware' or 'simulated'"
+            }), 400
+        source = raw_source.strip().lower()
+
+        timestamp = payload.get("timestamp")
+        if not timestamp:
+            timestamp = datetime.now(timezone.utc).isoformat()
+
+        # Meteorological range validation
+        valid, msg = WeatherService.validate_reading(temp_c, pressure_hpa, humidity_pct, lat, lon)
+        if not valid:
+            return jsonify({"status": "error", "error": f"Invalid measurement bounds: {msg}"}), 400
+
+        # Compute heat index
+        heat_index_c = payload.get("heat_index_c")
+        if heat_index_c is not None:
+            try:
+                heat_index_c = float(heat_index_c)
+            except (ValueError, TypeError):
+                heat_index_c = WeatherService.compute_heat_index(temp_c, humidity_pct)
+        else:
+            heat_index_c = WeatherService.compute_heat_index(temp_c, humidity_pct)
+
+        # Store in database
+        record_id = database.insert_reading(
+            temperature_c=temp_c,
+            pressure_hpa=pressure_hpa,
+            source=source,
+            validity_status="valid",
+            timestamp=timestamp,
+            humidity_pct=humidity_pct,
+            heat_index_c=heat_index_c,
+            latitude=lat,
+            longitude=lon,
+            db_path=db_path
+        )
+
+        # Evaluate safety alerts
+        AlertService.evaluate_reading(temp_c, db_path=db_path)
+
+        # Update sensor_service cache
+        try:
+            with app.sensor_service.lock:
+                app.sensor_service.is_connected = True
+                app.sensor_service.last_reading_time = timestamp
+                app.sensor_service.last_reading_val = {
+                    "id": record_id,
+                    "timestamp": timestamp,
+                    "temperature_c": round(temp_c, 2),
+                    "pressure_hpa": round(pressure_hpa, 2),
+                    "humidity_pct": humidity_pct,
+                    "heat_index_c": heat_index_c,
+                    "latitude": lat,
+                    "longitude": lon,
+                    "source": source,
+                    "validity_status": "valid"
+                }
+                app.sensor_service.last_error = None
+                app.sensor_service.consecutive_errors = 0
+        except Exception:
+            pass
+
+        heat_risk = WeatherService.get_heat_risk_assessment(temp_c, humidity_pct, source)
+
+        return jsonify({
+            "status": "success",
+            "id": record_id,
+            "timestamp": timestamp,
+            "temperature_c": round(temp_c, 2),
+            "pressure_hpa": round(pressure_hpa, 2),
+            "humidity_pct": humidity_pct,
+            "heat_index_c": heat_index_c,
+            "latitude": lat,
+            "longitude": lon,
+            "source": source,
+            "heat_risk": heat_risk
+        }), 201
 
     @app.route("/api/readings", methods=["GET"])
     def api_readings_range():
@@ -199,6 +667,7 @@ def create_app(test_config=None) -> Flask:
         # Calculate time-range specific summary
         temps = [r["temperature_c"] for r in readings if r.get("temperature_c") is not None]
         pressures = [r["pressure_hpa"] for r in readings if r.get("pressure_hpa") is not None]
+        humidities = [r["humidity_pct"] for r in readings if r.get("humidity_pct") is not None]
 
         summary = {
             "count": len(readings),
@@ -208,7 +677,10 @@ def create_app(test_config=None) -> Flask:
             "temp_avg": round(sum(temps) / len(temps), 2) if temps else None,
             "press_min": min(pressures) if pressures else None,
             "press_max": max(pressures) if pressures else None,
-            "press_avg": round(sum(pressures) / len(pressures), 2) if pressures else None
+            "press_avg": round(sum(pressures) / len(pressures), 2) if pressures else None,
+            "hum_min": min(humidities) if humidities else None,
+            "hum_max": max(humidities) if humidities else None,
+            "hum_avg": round(sum(humidities) / len(humidities), 1) if humidities else None
         }
 
         return jsonify({
@@ -286,6 +758,10 @@ def create_app(test_config=None) -> Flask:
             "Timestamp (UTC)",
             "Temperature (Celsius)",
             "Atmospheric Pressure (hPa)",
+            "Relative Humidity (%)",
+            "Heat Index (°C)",
+            "Latitude",
+            "Longitude",
             "Data Source",
             "Validity Status"
         ])
@@ -296,6 +772,10 @@ def create_app(test_config=None) -> Flask:
                 r["timestamp"],
                 r["temperature_c"],
                 r["pressure_hpa"],
+                r.get("humidity_pct") if r.get("humidity_pct") is not None else "",
+                r.get("heat_index_c") if r.get("heat_index_c") is not None else "",
+                r.get("latitude") if r.get("latitude") is not None else "",
+                r.get("longitude") if r.get("longitude") is not None else "",
                 r["source"],
                 r["validity_status"]
             ])
@@ -332,6 +812,7 @@ def create_app(test_config=None) -> Flask:
         }), 200
 
     @app.route("/api/alerts/<int:alert_id>/acknowledge", methods=["POST"])
+    @require_mutation_auth
     def api_alert_acknowledge(alert_id):
         """Acknowledges an active alert."""
         success = AlertService.acknowledge(alert_id, db_path=db_path)
@@ -359,6 +840,7 @@ def create_app(test_config=None) -> Flask:
         }), 200
 
     @app.route("/api/settings/threshold", methods=["POST"])
+    @require_mutation_auth
     def api_settings_update_threshold():
         """Updates the temperature threshold."""
         data = request.get_json(silent=True) or {}
@@ -387,6 +869,7 @@ def create_app(test_config=None) -> Flask:
         return jsonify({"success": False, "error": "Failed to update threshold in database."}), 500
 
     @app.route("/api/settings/sampling_interval", methods=["POST"])
+    @require_mutation_auth
     def api_settings_update_sampling():
         """Updates the sensor sampling interval."""
         data = request.get_json(silent=True) or {}
@@ -411,6 +894,7 @@ def create_app(test_config=None) -> Flask:
         return jsonify({"success": False, "error": "Failed to update interval."}), 500
 
     @app.route("/api/mode", methods=["POST"])
+    @require_mutation_auth
     def api_toggle_mode():
         """Switches mode between 'demo' and 'live'."""
         data = request.get_json(silent=True) or {}
@@ -426,6 +910,7 @@ def create_app(test_config=None) -> Flask:
         }), 200
 
     @app.route("/api/demo/spike", methods=["POST"])
+    @require_mutation_auth
     def api_demo_spike():
         """Toggles simulated temperature spike in Demo mode for alert testing."""
         data = request.get_json(silent=True) or {}

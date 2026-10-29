@@ -112,20 +112,20 @@
     const s = data.sensor || {};
     const alertInfo = data.alert || {};
 
-    if (s.mode === "demo") {
-      pill.className = "status-pill demo";
-      pill.setAttribute("title", "Simulated data active (No I²C hardware)");
-      text.textContent = "Demo Mode";
+    if (s.mode === "demo" || s.mode === "simulated") {
+      pill.className = "status-pill simulated";
+      pill.setAttribute("title", "Simulated data active (Software-generated environmental model)");
+      text.textContent = "Simulated";
       if (demoBanner) demoBanner.classList.remove("d-none");
     } else if (s.is_connected) {
       pill.className = "status-pill online";
-      pill.setAttribute("title", `Connected to BMP280 on ${s.address || 'I²C'}`);
-      text.textContent = "Sensor Online";
+      pill.setAttribute("title", `Connected to ${s.sensor_type || 'BME280'} on ${s.address || 'I²C'}`);
+      text.textContent = "Hardware Live";
       if (demoBanner) demoBanner.classList.add("d-none");
     } else {
-      pill.className = "status-pill offline";
-      pill.setAttribute("title", s.last_error || "Sensor offline");
-      text.textContent = "Sensor Offline";
+      pill.className = "status-pill unavailable";
+      pill.setAttribute("title", s.last_error || "Hardware sensor unavailable");
+      text.textContent = "Unavailable";
       if (demoBanner) demoBanner.classList.add("d-none");
     }
 
@@ -145,7 +145,12 @@
 
       if (alertBtn) {
         alertBtn.onclick = function () {
-          fetch(`/api/alerts/${act.id}/acknowledge`, { method: "POST" })
+          fetch(`/api/alerts/${act.id}/acknowledge`, {
+            method: "POST",
+            headers: {
+              "X-CSRF-Token": window.VA_CSRF_TOKEN || ""
+            }
+          })
             .then(r => r.json())
             .then(res => {
               if (res.success) {
@@ -254,7 +259,12 @@
     const btnSpike = document.getElementById("btnToggleDemoSpike");
     if (btnSpike) {
       btnSpike.addEventListener("click", function () {
-        fetch("/api/demo/spike", { method: "POST" })
+        fetch("/api/demo/spike", {
+          method: "POST",
+          headers: {
+            "X-CSRF-Token": window.VA_CSRF_TOKEN || ""
+          }
+        })
           .then(r => r.json())
           .then(res => {
             alert(res.message);

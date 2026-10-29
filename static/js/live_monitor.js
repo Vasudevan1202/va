@@ -92,15 +92,18 @@
       return;
     }
 
-    tbody.innerHTML = streamRecords.map(r => `
-      <tr>
-        <td>${new Date(r.timestamp).toLocaleTimeString([], { hour12: false })}</td>
-        <td class="text-cyan fw-bold">${r.temperature_c.toFixed(2)}</td>
-        <td class="text-white fw-semibold">${r.pressure_hpa.toFixed(2)}</td>
-        <td><span class="badge-tag ${r.source}">${r.source}</span></td>
-        <td><span class="badge-tag ${r.validity_status}">${r.validity_status}</span></td>
-      </tr>
-    `).join("");
+    tbody.innerHTML = streamRecords.map(r => {
+      const pressStr = (r.pressure_hpa !== null && r.pressure_hpa !== undefined) ? `${r.pressure_hpa.toFixed(2)}` : '<span class="text-secondary">–</span>';
+      return `
+        <tr>
+          <td>${new Date(r.timestamp).toLocaleTimeString([], { hour12: false })}</td>
+          <td class="text-cyan fw-bold">${r.temperature_c.toFixed(2)}</td>
+          <td class="text-white fw-semibold">${pressStr}</td>
+          <td><span class="badge-tag ${r.source}">${r.source}</span></td>
+          <td><span class="badge-tag ${r.validity_status}">${r.validity_status}</span></td>
+        </tr>
+      `;
+    }).join("");
   }
 
   function setupIntervalSelector() {

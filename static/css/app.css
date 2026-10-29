@@ -264,22 +264,22 @@ a:hover {
   animation: pulse-green 2s infinite;
 }
 
-.status-pill.offline {
+.status-pill.offline, .status-pill.unavailable {
   background-color: rgba(255, 93, 115, 0.12);
   color: var(--danger);
   border-color: rgba(255, 93, 115, 0.25);
 }
-.status-pill.offline .status-dot {
+.status-pill.offline .status-dot, .status-pill.unavailable .status-dot {
   background-color: var(--danger);
   box-shadow: 0 0 8px rgba(255, 93, 115, 0.7);
 }
 
-.status-pill.demo {
+.status-pill.demo, .status-pill.simulated {
   background-color: rgba(255, 181, 71, 0.12);
   color: var(--warning);
   border-color: rgba(255, 181, 71, 0.25);
 }
-.status-pill.demo .status-dot {
+.status-pill.demo .status-dot, .status-pill.simulated .status-dot {
   background-color: var(--warning);
   box-shadow: 0 0 8px rgba(255, 181, 71, 0.7);
 }
@@ -560,7 +560,7 @@ a:hover {
   color: var(--danger);
 }
 
-.badge-tag.demo {
+.badge-tag.demo, .badge-tag.simulated {
   background-color: rgba(255, 181, 71, 0.15);
   color: var(--warning);
 }
@@ -568,6 +568,11 @@ a:hover {
 .badge-tag.hardware {
   background-color: rgba(81, 216, 255, 0.15);
   color: var(--primary-cyan);
+}
+
+.badge-tag.unavailable {
+  background-color: rgba(145, 169, 191, 0.15);
+  color: #91A9BF;
 }
 
 /* Chart Container */

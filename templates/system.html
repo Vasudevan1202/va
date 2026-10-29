@@ -245,7 +245,10 @@ document.addEventListener("DOMContentLoaded", function() {
     }
     fetch("/api/mode", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": window.VA_CSRF_TOKEN || ""
+      },
       body: JSON.stringify({ mode: "demo" })
     })
       .then(r => r.json())
@@ -272,7 +275,10 @@ document.addEventListener("DOMContentLoaded", function() {
     }
     fetch("/api/mode", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": window.VA_CSRF_TOKEN || ""
+      },
       body: JSON.stringify({ mode: "live" })
     })
       .then(r => r.json())
@@ -308,7 +314,10 @@ document.addEventListener("DOMContentLoaded", function() {
 
     fetch("/api/settings/sampling_interval", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": window.VA_CSRF_TOKEN || ""
+      },
       body: JSON.stringify({ interval_seconds: interval })
     })
       .then(r => r.json())

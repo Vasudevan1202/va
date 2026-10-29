@@ -180,20 +180,27 @@
         if (nextBtn) nextBtn.disabled = !data.has_next;
 
         if (readings.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-secondary">No records found matching query criteria.</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-secondary">No records found matching query criteria.</td></tr>`;
           return;
         }
 
-        tbody.innerHTML = readings.map(r => `
-          <tr>
-            <td>#${r.id}</td>
-            <td>${new Date(r.timestamp).toLocaleString()}</td>
-            <td class="text-cyan fw-bold">${r.temperature_c.toFixed(2)}</td>
-            <td class="text-white fw-semibold">${r.pressure_hpa.toFixed(2)}</td>
-            <td><span class="badge-tag ${r.source}">${r.source}</span></td>
-            <td><span class="badge-tag ${r.validity_status}">${r.validity_status}</span></td>
-          </tr>
-        `).join("");
+        tbody.innerHTML = readings.map(r => {
+          const humStr = (r.humidity_pct !== null && r.humidity_pct !== undefined) ? `${r.humidity_pct.toFixed(1)}%` : '<span class="text-secondary">–</span>';
+          const hiStr = (r.heat_index_c !== null && r.heat_index_c !== undefined) ? `${r.heat_index_c.toFixed(1)}°` : '<span class="text-secondary">–</span>';
+          const pressStr = (r.pressure_hpa !== null && r.pressure_hpa !== undefined) ? `${r.pressure_hpa.toFixed(2)} hPa` : '<span class="text-secondary">–</span>';
+          return `
+            <tr>
+              <td>#${r.id}</td>
+              <td>${new Date(r.timestamp).toLocaleString()}</td>
+              <td class="text-cyan fw-bold">${r.temperature_c.toFixed(2)}</td>
+              <td class="text-white">${humStr}</td>
+              <td class="text-white fw-semibold">${pressStr}</td>
+              <td>${hiStr}</td>
+              <td><span class="badge-tag ${r.source}">${r.source}</span></td>
+              <td><span class="badge-tag ${r.validity_status}">${r.validity_status}</span></td>
+            </tr>
+          `;
+        }).join("");
 
         // Update CSV Export link
         updateExportLink();

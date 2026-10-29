@@ -1,6 +1,7 @@
 import pytest
 import json
 from app import create_app
+from config import Config
 import database
 
 @pytest.fixture
@@ -106,16 +107,24 @@ def test_api_readings_export_csv(app_client):
 def test_api_settings_threshold_update(app_client):
     client, db_file = app_client
 
+    # Unauthenticated mutation rejected
+    res_unauth = client.post("/api/settings/threshold", json={"threshold_c": 36.5})
+    assert res_unauth.status_code == 403
+    assert res_unauth.get_json()["success"] is False
+
+    # Authenticated with Control Key
+    auth_headers = {"X-VA-Control-Key": Config.CONTROL_KEY}
+
     # Bad request (missing body or value)
-    res_bad = client.post("/api/settings/threshold", json={})
+    res_bad = client.post("/api/settings/threshold", json={}, headers=auth_headers)
     assert res_bad.status_code == 400
 
     # Out of bounds
-    res_oob = client.post("/api/settings/threshold", json={"threshold_c": 120})
+    res_oob = client.post("/api/settings/threshold", json={"threshold_c": 120}, headers=auth_headers)
     assert res_oob.status_code == 400
 
     # Valid update
-    res = client.post("/api/settings/threshold", json={"threshold_c": 36.5})
+    res = client.post("/api/settings/threshold", json={"threshold_c": 36.5}, headers=auth_headers)
     assert res.status_code == 200
     data = res.get_json()
     assert data["success"] is True
@@ -126,11 +135,18 @@ def test_api_settings_threshold_update(app_client):
 
 def test_api_mode_toggle(app_client):
     client, _ = app_client
-    res = client.post("/api/mode", json={"mode": "live"})
+
+    # Unauthenticated mutation rejected
+    res_unauth = client.post("/api/mode", json={"mode": "live"})
+    assert res_unauth.status_code == 403
+
+    # Authenticated with Bearer Control Key
+    auth_headers = {"Authorization": f"Bearer {Config.CONTROL_KEY}"}
+    res = client.post("/api/mode", json={"mode": "live"}, headers=auth_headers)
     assert res.status_code == 200
     data = res.get_json()
     assert data["mode"] == "live"
 
-    res2 = client.post("/api/mode", json={"mode": "demo"})
+    res2 = client.post("/api/mode", json={"mode": "demo"}, headers=auth_headers)
     assert res2.status_code == 200
     assert res2.get_json()["mode"] == "demo"

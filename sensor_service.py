@@ -10,6 +10,8 @@ from typing import Optional, Dict, Any, Tuple
 from config import Config
 import database
 from alert_service import AlertService
+from weather_service import WeatherService
+from hardware_adapters import BME280Driver
 
 logger = logging.getLogger("virtual_atmosphere.sensor")
 
@@ -191,6 +193,10 @@ class SensorService:
         self.detected_address: Optional[str] = None
         self.i2c_bus_num: int = Config.I2C_BUS
 
+        # DHT11 Ingested Telemetry State (from Raspberry Pi / Arduino pipeline)
+        self.last_dht11_reading: Optional[Dict[str, Any]] = None
+        self.last_dht11_time: Optional[str] = None
+
         # Demo Mode state generator variables
         self.demo_temp_base = 24.5
         self.demo_pressure_base = 1013.25
@@ -210,6 +216,12 @@ class SensorService:
                 if self.driver:
                     self.driver.close()
                     self.driver = None
+
+    def update_dht11(self, reading_dict: Dict[str, Any]):
+        """Updates in-memory telemetry state for DHT11 remote readings."""
+        with self.lock:
+            self.last_dht11_reading = reading_dict
+            self.last_dht11_time = reading_dict.get("timestamp") or datetime.now(timezone.utc).isoformat()
 
     def start(self):
         """Starts the background polling worker."""
@@ -232,7 +244,7 @@ class SensorService:
     def _init_hardware(self) -> bool:
         """Initializes hardware driver in live mode."""
         if self.driver is None:
-            self.driver = BMP280Driver(
+            self.driver = BME280Driver(
                 bus_num=self.i2c_bus_num,
                 address_candidates=Config.I2C_ADDRESS_CANDIDATES
             )
@@ -247,11 +259,11 @@ class SensorService:
             self.is_connected = False
         return success
 
-    def _simulate_reading(self) -> Tuple[float, float, str]:
+    def _simulate_reading(self) -> Tuple[float, float, float, str]:
         """
-        Generates realistic environmental values for Demo mode.
-        Models time-of-day temperature curve (cool morning, warmer afternoon)
-        and realistic atmospheric pressure fluctuations.
+        Generates realistic environmental values for simulated/demo mode.
+        Models time-of-day temperature curve (cool morning, warmer afternoon),
+        atmospheric pressure diurnal tide, and realistic relative humidity (inverse to temperature).
         """
         now = datetime.now(timezone.utc)
         # Hour fraction 0.0 to 24.0
@@ -272,7 +284,16 @@ class SensorService:
         noise_p = (random.random() - 0.5) * 0.3
         pressure = self.demo_pressure_base + tide + noise_p
 
-        return round(temp, 2), round(pressure, 2), "demo"
+        # Relative humidity diurnal cycle: generally inverse to temperature
+        # Cool mornings have higher humidity (~68-75%), warm afternoons lower (~45-55%)
+        hum_cycle = -12.0 * math.sin((hour_fraction - 9.0) * (2.0 * math.pi / 24.0))
+        noise_h = (random.random() - 0.5) * 1.5
+        humidity = max(10.0, min(95.0, 58.0 + hum_cycle + noise_h))
+
+        # Explicit data source attribution
+        source = "demo" if self.mode == "demo" else "simulated"
+
+        return round(temp, 2), round(pressure, 2), round(humidity, 1), source
 
     def read_sensor_once(self) -> Optional[Dict[str, Any]]:
         """
@@ -281,12 +302,13 @@ class SensorService:
         """
         now_iso = datetime.now(timezone.utc).isoformat()
 
-        if self.mode == "demo":
-            temp_c, pressure_hpa, source = self._simulate_reading()
-            validity = "valid"
-            # Validate within BMP280 operational specs
-            if not (-40.0 <= temp_c <= 85.0 and 300.0 <= pressure_hpa <= 1100.0):
-                validity = "out_of_range"
+        if self.mode in ("demo", "simulated", "simulation"):
+            temp_c, pressure_hpa, humidity_pct, source = self._simulate_reading()
+            valid, _ = WeatherService.validate_reading(temp_c, pressure_hpa, humidity_pct)
+            validity = "valid" if valid else "out_of_range"
+
+            # Compute heat index if criteria met
+            heat_index_c = WeatherService.compute_heat_index(temp_c, humidity_pct)
 
             # Save to SQLite
             record_id = database.insert_reading(
@@ -295,6 +317,8 @@ class SensorService:
                 source=source,
                 validity_status=validity,
                 timestamp=now_iso,
+                humidity_pct=humidity_pct,
+                heat_index_c=heat_index_c,
                 db_path=self.db_path
             )
 
@@ -306,6 +330,8 @@ class SensorService:
                     "timestamp": now_iso,
                     "temperature_c": temp_c,
                     "pressure_hpa": pressure_hpa,
+                    "humidity_pct": humidity_pct,
+                    "heat_index_c": heat_index_c,
                     "source": source,
                     "validity_status": validity
                 }
@@ -326,19 +352,20 @@ class SensorService:
                     with self.lock:
                         self.is_connected = False
                         self.consecutive_errors += 1
-                        self.last_error = "BMP280 sensor not detected on I2C bus. Check wiring."
-                    logger.debug("Live mode poll: BMP280 sensor not connected.")
+                        self.last_error = "BME280/BMP280 sensor not detected on I2C bus. Check wiring."
+                    logger.debug("Live mode poll: Sensor not connected.")
                     # Do NOT fabricate measurements when hardware is disconnected!
                     return None
 
             try:
-                temp_c, pressure_hpa = self.driver.read_raw()
-                # Validate range
-                if -40.0 <= temp_c <= 85.0 and 300.0 <= pressure_hpa <= 1100.0:
-                    validity = "valid"
-                else:
-                    validity = "out_of_range"
-                    logger.warning(f"Sensor reading out of range: {temp_c}°C, {pressure_hpa} hPa")
+                # read_raw returns (temp_c, pressure_hpa, humidity_pct)
+                temp_c, pressure_hpa, humidity_pct = self.driver.read_raw()
+                valid, _ = WeatherService.validate_reading(temp_c, pressure_hpa, humidity_pct)
+                validity = "valid" if valid else "out_of_range"
+                if not valid:
+                    logger.warning(f"Sensor reading out of range: {temp_c}°C, {pressure_hpa} hPa, {humidity_pct}%")
+
+                heat_index_c = WeatherService.compute_heat_index(temp_c, humidity_pct)
 
                 record_id = database.insert_reading(
                     temperature_c=temp_c,
@@ -346,6 +373,8 @@ class SensorService:
                     source="hardware",
                     validity_status=validity,
                     timestamp=now_iso,
+                    humidity_pct=humidity_pct,
+                    heat_index_c=heat_index_c,
                     db_path=self.db_path
                 )
 
@@ -357,6 +386,8 @@ class SensorService:
                         "timestamp": now_iso,
                         "temperature_c": round(temp_c, 2),
                         "pressure_hpa": round(pressure_hpa, 2),
+                        "humidity_pct": humidity_pct,
+                        "heat_index_c": heat_index_c,
                         "source": "hardware",
                         "validity_status": validity
                     }
@@ -410,10 +441,37 @@ class SensorService:
                 except Exception:
                     pass
 
+            sensor_model = "BME280"
+            if self.mode in ("demo", "simulated", "simulation"):
+                source_state = "simulated"
+            elif self.is_connected:
+                source_state = "hardware"
+                if self.driver:
+                    sensor_model = getattr(self.driver, "sensor_type", "BME280")
+            else:
+                source_state = "unavailable"
+
+            # Calculate DHT11 freshness
+            dht11_freshness = None
+            if self.last_dht11_time:
+                try:
+                    dht_dt = datetime.fromisoformat(self.last_dht11_time.replace("Z", "+00:00"))
+                    dht11_freshness = round((datetime.now(timezone.utc) - dht_dt).total_seconds(), 1)
+                except Exception:
+                    pass
+
+            dht11_status = {
+                "active": (dht11_freshness is not None and dht11_freshness < 180),
+                "last_reading_time": self.last_dht11_time,
+                "data_freshness_seconds": dht11_freshness,
+                "latest": self.last_dht11_reading
+            }
+
             return {
                 "mode": self.mode,
+                "data_source": source_state,
                 "is_connected": self.is_connected,
-                "sensor_type": "BMP280",
+                "sensor_type": sensor_model,
                 "bus": self.i2c_bus_num,
                 "address": self.detected_address or ("0x76/0x77 (Scanning)" if self.mode == "live" else "Simulated"),
                 "last_reading_time": self.last_reading_time,
@@ -421,6 +479,7 @@ class SensorService:
                 "consecutive_errors": self.consecutive_errors,
                 "last_error": self.last_error,
                 "demo_spike_active": self.demo_spike_active,
+                "dht11": dht11_status,
                 "server_time": datetime.now(timezone.utc).isoformat()
             }
 

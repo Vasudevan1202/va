@@ -156,3 +156,94 @@ To ensure Virtual Atmosphere starts automatically when the Raspberry Pi powers o
    sudo systemctl status virtual-atmosphere.service
    sudo journalctl -u virtual-atmosphere.service -f
    ```
+
+---
+
+## 12. Raspberry Pi 3 B+ DHT11 & Arduino Mega 2560 Pipeline Setup
+
+Connect your physical DHT11 sensor pipeline to the live Virtual Atmosphere dashboard (`https://va.developerhut.in`):
+
+### Sensor Hardware Pipeline
+```text
++-----------------------+     Digital Signal      +------------------------+
+| DHT11 Sensor          | ----------------------> | Arduino Mega 2560      |
+| (Temp & Humidity)     |   (Pin D4 / VCC / GND)  | (Serial at 9600 Baud)  |
++-----------------------+                         +------------------------+
+                                                              |
+                                                              | USB Cable (/dev/ttyUSB0)
+                                                              v
++-----------------------+     HTTPS Ingest        +------------------------+
+| Virtual Atmosphere    | <---------------------- | Raspberry Pi 3B+       |
+| Cloud Dashboard       |   (Bearer Token Auth)   | (Python Bridge Worker) |
++-----------------------+                         +------------------------+
+```
+
+### 1. Arduino Mega 2560 Serial Output Format
+Ensure your Arduino sketch prints temperature and humidity to Serial at **9600 baud**:
+- Supported format 1: `Temperature: 33.0 °C | Humidity: 46.0%`
+- Supported format 2 (CSV): `33.0, 46.0`
+
+### 2. Connect Arduino to Raspberry Pi
+Plug the Arduino Mega 2560 into any USB port of the Raspberry Pi 3 Model B+. The serial port will typically be `/dev/ttyUSB0` (or `/dev/ttyACM0`).
+
+Verify serial port detection:
+```bash
+ls -l /dev/ttyUSB* /dev/ttyACM*
+```
+
+### 3. Run the Python DHT11 Serial Ingestion Bridge
+Install `pyserial` on the Raspberry Pi:
+```bash
+pip3 install pyserial
+```
+
+Run the bridge client to stream readings directly to your cloud dashboard:
+```bash
+python3 scripts/pi_dht11_serial_receiver.py \
+  --server https://va.developerhut.in \
+  --token "<YOUR_SECRET_TOKEN>" \
+  --port /dev/ttyUSB0 \
+  --baud 9600 \
+  --source "raspberry_pi_dht11" \
+  --interval 10
+```
+
+---
+
+## 13. Environment Variables Reference & Vercel Durable Persistence
+
+### Complete Environment Variables Reference
+
+| Variable | Description | Default | Required in Production |
+| :--- | :--- | :--- | :--- |
+| `VA_DHT11_INGEST_KEY` | Secret Bearer token for `POST /api/ingest/dht11` | None (fails closed) | **Yes** |
+| `VA_INGEST_KEY` | Secret Bearer token for `POST /api/telemetry` | None (fails closed) | **Yes** |
+| `VA_CONTROL_KEY` | Programmatic Bearer token for control mutations | None (fails closed) | Optional |
+| `VA_SECRET_KEY` / `FLASK_SECRET_KEY` | Flask session cookie encryption secret | Auto-generated | **Yes** |
+| `TURSO_DATABASE_URL` | Turso libSQL cloud database URL for durable Vercel persistence | None | Recommended for Vercel |
+| `TURSO_AUTH_TOKEN` | Turso cloud database Bearer authentication token | None | With `TURSO_DATABASE_URL` |
+| `POSTGRES_URL` / `DATABASE_URL` | Managed PostgreSQL database connection string | None | Alternative for Vercel |
+| `VA_MODE` | Runtime mode (`demo` or `live`) | `demo` (Vercel) / `demo` | No |
+| `VA_HOST` | Network interface IP binding | `127.0.0.1` | No (`0.0.0.0` on Pi) |
+| `VA_PORT` | HTTP port | `5000` | No |
+| `VA_TEMP_THRESHOLD` | High-temperature safety alert trigger threshold (°C) | `35.0` | No |
+| `VA_SAMPLING_INTERVAL` | Polling interval in seconds (2 to 3600) | `10` | No |
+| `VA_TELEMETRY_RATE_LIMIT`| Process-local sliding window rate limit (req/min) | `60` | No |
+
+### Configuring Durable Cloud Persistence on Vercel
+
+On Vercel serverless functions, the local filesystem is ephemeral: SQLite databases created in `/tmp` are wiped when serverless containers cold start.
+
+To store readings durably across serverless requests on Vercel:
+1. Create a free database on **Turso** ([turso.tech](https://turso.tech)) or **Neon** ([neon.tech](https://neon.tech)).
+2. In your Vercel Project Settings &rarr; **Environment Variables**, add:
+   - For Turso:
+     - `TURSO_DATABASE_URL` = `https://<your-db>-<org>.turso.io`
+     - `TURSO_AUTH_TOKEN` = `<your-turso-token>`
+   - For PostgreSQL / Neon / Supabase:
+     - `POSTGRES_URL` = `postgresql://<user>:<password>@<host>/<dbname>?sslmode=require`
+   - Ingestion Authentication:
+     - `VA_DHT11_INGEST_KEY` = `<secure-random-token-hex>`
+     - `VA_INGEST_KEY` = `<secure-random-token-hex>`
+     - `VA_SECRET_KEY` = `<secure-random-token-hex>`
+3. Deploy to Vercel. Virtual Atmosphere will automatically detect the durable cloud backend, initialize tables, and persist incoming DHT11 and BMP280 telemetry across all serverless invocations.

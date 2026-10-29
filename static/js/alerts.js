@@ -100,7 +100,12 @@
       window.VA.setBtnLoading(btnEl, true, "Acknowledging…");
     }
 
-    fetch(`/api/alerts/${alertId}/acknowledge`, { method: "POST" })
+    fetch(`/api/alerts/${alertId}/acknowledge`, {
+      method: "POST",
+      headers: {
+        "X-CSRF-Token": window.VA_CSRF_TOKEN || ""
+      }
+    })
       .then(r => r.json())
       .then(res => {
         if (res.success) {
@@ -156,7 +161,10 @@
 
       fetch("/api/settings/threshold", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": window.VA_CSRF_TOKEN || ""
+        },
         body: JSON.stringify({ threshold_c: val })
       })
         .then(r => r.json())
