@@ -18,7 +18,10 @@ class ConfigMeta(type):
 
     @INGEST_KEY.setter
     def INGEST_KEY(cls, val):
-        cls._overrides["INGEST_KEY"] = val
+        if isinstance(val, property):
+            cls._overrides.pop("INGEST_KEY", None)
+        else:
+            cls._overrides["INGEST_KEY"] = val
 
     @INGEST_KEY.deleter
     def INGEST_KEY(cls):
@@ -27,12 +30,17 @@ class ConfigMeta(type):
     @property
     def DHT11_INGEST_KEY(cls) -> Optional[str]:
         if "DHT11_INGEST_KEY" in cls._overrides:
-            return cls._overrides["DHT11_INGEST_KEY"]
+            val = cls._overrides["DHT11_INGEST_KEY"]
+            if isinstance(val, str):
+                return val
         return cls.get_dht11_ingest_key()
 
     @DHT11_INGEST_KEY.setter
     def DHT11_INGEST_KEY(cls, val):
-        cls._overrides["DHT11_INGEST_KEY"] = val
+        if isinstance(val, property):
+            cls._overrides.pop("DHT11_INGEST_KEY", None)
+        else:
+            cls._overrides["DHT11_INGEST_KEY"] = val
 
     @DHT11_INGEST_KEY.deleter
     def DHT11_INGEST_KEY(cls):
@@ -41,12 +49,17 @@ class ConfigMeta(type):
     @property
     def CONTROL_KEY(cls) -> Optional[str]:
         if "CONTROL_KEY" in cls._overrides:
-            return cls._overrides["CONTROL_KEY"]
+            val = cls._overrides["CONTROL_KEY"]
+            if isinstance(val, str):
+                return val
         return cls.get_control_key()
 
     @CONTROL_KEY.setter
     def CONTROL_KEY(cls, val):
-        cls._overrides["CONTROL_KEY"] = val
+        if isinstance(val, property):
+            cls._overrides.pop("CONTROL_KEY", None)
+        else:
+            cls._overrides["CONTROL_KEY"] = val
 
     @CONTROL_KEY.deleter
     def CONTROL_KEY(cls):
@@ -55,7 +68,9 @@ class ConfigMeta(type):
     @property
     def MODE(cls) -> str:
         if "MODE" in cls._overrides:
-            return cls._overrides["MODE"]
+            val = cls._overrides["MODE"]
+            if isinstance(val, str):
+                return val
         va_mode = os.environ.get("VA_MODE", "").strip().lower()
         if va_mode in ("live", "demo"):
             return va_mode
@@ -65,7 +80,10 @@ class ConfigMeta(type):
 
     @MODE.setter
     def MODE(cls, val):
-        cls._overrides["MODE"] = val
+        if isinstance(val, property):
+            cls._overrides.pop("MODE", None)
+        else:
+            cls._overrides["MODE"] = val
 
     @MODE.deleter
     def MODE(cls):
@@ -74,12 +92,17 @@ class ConfigMeta(type):
     @property
     def TURSO_DATABASE_URL(cls) -> str:
         if "TURSO_DATABASE_URL" in cls._overrides:
-            return cls._overrides["TURSO_DATABASE_URL"]
+            val = cls._overrides["TURSO_DATABASE_URL"]
+            if isinstance(val, str):
+                return val
         return os.environ.get("TURSO_DATABASE_URL", "").strip()
 
     @TURSO_DATABASE_URL.setter
     def TURSO_DATABASE_URL(cls, val):
-        cls._overrides["TURSO_DATABASE_URL"] = val
+        if isinstance(val, property):
+            cls._overrides.pop("TURSO_DATABASE_URL", None)
+        else:
+            cls._overrides["TURSO_DATABASE_URL"] = val
 
     @TURSO_DATABASE_URL.deleter
     def TURSO_DATABASE_URL(cls):
@@ -88,12 +111,17 @@ class ConfigMeta(type):
     @property
     def TURSO_AUTH_TOKEN(cls) -> str:
         if "TURSO_AUTH_TOKEN" in cls._overrides:
-            return cls._overrides["TURSO_AUTH_TOKEN"]
+            val = cls._overrides["TURSO_AUTH_TOKEN"]
+            if isinstance(val, str):
+                return val
         return os.environ.get("TURSO_AUTH_TOKEN", "").strip()
 
     @TURSO_AUTH_TOKEN.setter
     def TURSO_AUTH_TOKEN(cls, val):
-        cls._overrides["TURSO_AUTH_TOKEN"] = val
+        if isinstance(val, property):
+            cls._overrides.pop("TURSO_AUTH_TOKEN", None)
+        else:
+            cls._overrides["TURSO_AUTH_TOKEN"] = val
 
     @TURSO_AUTH_TOKEN.deleter
     def TURSO_AUTH_TOKEN(cls):
@@ -102,14 +130,19 @@ class ConfigMeta(type):
     @property
     def DATABASE_PATH(cls) -> str:
         if "DATABASE_PATH" in cls._overrides:
-            return cls._overrides["DATABASE_PATH"]
+            val = cls._overrides["DATABASE_PATH"]
+            if isinstance(val, str):
+                return val
         is_vercel = bool(os.environ.get("VERCEL") or os.environ.get("VERCEL_ENV"))
         data_dir = Path("/tmp") if is_vercel else (cls.BASE_DIR / "data")
         return os.environ.get("VA_DB_PATH", str(data_dir / "virtual_atmosphere.db"))
 
     @DATABASE_PATH.setter
     def DATABASE_PATH(cls, val):
-        cls._overrides["DATABASE_PATH"] = val
+        if isinstance(val, property):
+            cls._overrides.pop("DATABASE_PATH", None)
+        else:
+            cls._overrides["DATABASE_PATH"] = val
 
     @DATABASE_PATH.deleter
     def DATABASE_PATH(cls):
@@ -215,7 +248,10 @@ class Config(metaclass=ConfigMeta):
         - In production/live mode, fails closed (returns None) if missing or placeholder.
         - In local development mode, permits a distinct local key ('dev-local-ingest-key') if unconfigured.
         """
-        key = os.environ.get("VA_INGEST_KEY", "").strip()
+        raw_key = getattr(cls, "_overrides", {}).get("INGEST_KEY")
+        if not isinstance(raw_key, str):
+            raw_key = os.environ.get("VA_INGEST_KEY", "")
+        key = str(raw_key).strip() if raw_key else ""
         if not key:
             if cls.is_production_mode():
                 return None
@@ -232,7 +268,10 @@ class Config(metaclass=ConfigMeta):
         - In production/live mode, fails closed (returns None) if missing or placeholder.
         - In local development mode, permits a distinct local key ('dev-local-control-key') if unconfigured.
         """
-        key = os.environ.get("VA_CONTROL_KEY", "").strip()
+        raw_key = getattr(cls, "_overrides", {}).get("CONTROL_KEY")
+        if not isinstance(raw_key, str):
+            raw_key = os.environ.get("VA_CONTROL_KEY", "")
+        key = str(raw_key).strip() if raw_key else ""
         if not key:
             if cls.is_production_mode():
                 return None
@@ -250,7 +289,10 @@ class Config(metaclass=ConfigMeta):
         - In production/live mode, fails closed (returns None) if missing or placeholder.
         - In local development mode, permits a distinct local key ('dev-local-dht11-key') if unconfigured.
         """
-        key = (os.environ.get("VA_DHT11_INGEST_KEY") or os.environ.get("VA_INGEST_KEY") or "").strip()
+        raw_key = getattr(cls, "_overrides", {}).get("DHT11_INGEST_KEY")
+        if not isinstance(raw_key, str):
+            raw_key = os.environ.get("VA_DHT11_INGEST_KEY") or os.environ.get("VA_INGEST_KEY") or ""
+        key = str(raw_key).strip() if raw_key else ""
         if not key:
             if cls.is_production_mode():
                 return None

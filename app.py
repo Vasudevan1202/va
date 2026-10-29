@@ -471,20 +471,30 @@ def create_app(test_config=None) -> Flask:
         heat_risk = WeatherService.get_heat_risk_assessment(temp_c, humidity_percent, source)
 
         # Store durably in database
-        record_id = database.insert_reading(
-            temperature_c=temp_c,
-            pressure_hpa=None,
-            source=source,
-            validity_status="valid",
-            timestamp=timestamp,
-            humidity_pct=humidity_percent,
-            heat_index_c=heat_index_c,
-            sensor_type="dht11",
-            db_path=db_path
-        )
+        try:
+            record_id = database.insert_reading(
+                temperature_c=temp_c,
+                pressure_hpa=None,
+                source=source,
+                validity_status="valid",
+                timestamp=timestamp,
+                humidity_pct=humidity_percent,
+                heat_index_c=heat_index_c,
+                sensor_type="dht11",
+                db_path=db_path
+            )
+            if not record_id:
+                logger.error("DHT11 telemetry ingestion rejected: database write did not return a valid record id.")
+                return jsonify({"status": "error", "error": "Database storage failure"}), 500
+        except Exception as e:
+            logger.error(f"Failed to persist DHT11 reading to database: {type(e).__name__}: {e}")
+            return jsonify({"status": "error", "error": "Database storage failure"}), 500
 
-        # Evaluate safety alerts for temperature threshold
-        AlertService.evaluate_reading(temp_c, db_path=db_path)
+        # Evaluate safety alerts for temperature threshold (non-fatal for ingestion)
+        try:
+            AlertService.evaluate_reading(temp_c, db_path=db_path)
+        except Exception as e:
+            logger.error(f"Alert evaluation non-fatal failure during DHT11 ingestion: {type(e).__name__}: {e}")
 
         # Update in-memory cache in sensor_service
         dht11_record = {
@@ -633,21 +643,31 @@ def create_app(test_config=None) -> Flask:
             heat_index_c = WeatherService.compute_heat_index(temp_c, humidity_pct)
 
         # Store in database
-        record_id = database.insert_reading(
-            temperature_c=temp_c,
-            pressure_hpa=pressure_hpa,
-            source=source,
-            validity_status="valid",
-            timestamp=timestamp,
-            humidity_pct=humidity_pct,
-            heat_index_c=heat_index_c,
-            latitude=lat,
-            longitude=lon,
-            db_path=db_path
-        )
+        try:
+            record_id = database.insert_reading(
+                temperature_c=temp_c,
+                pressure_hpa=pressure_hpa,
+                source=source,
+                validity_status="valid",
+                timestamp=timestamp,
+                humidity_pct=humidity_pct,
+                heat_index_c=heat_index_c,
+                latitude=lat,
+                longitude=lon,
+                db_path=db_path
+            )
+            if not record_id:
+                logger.error("Telemetry ingestion rejected: database write did not return a valid record id.")
+                return jsonify({"status": "error", "error": "Database storage failure"}), 500
+        except Exception as e:
+            logger.error(f"Failed to persist telemetry reading to database: {type(e).__name__}: {e}")
+            return jsonify({"status": "error", "error": "Database storage failure"}), 500
 
-        # Evaluate safety alerts
-        AlertService.evaluate_reading(temp_c, db_path=db_path)
+        # Evaluate safety alerts (non-fatal)
+        try:
+            AlertService.evaluate_reading(temp_c, db_path=db_path)
+        except Exception as e:
+            logger.error(f"Alert evaluation non-fatal failure during telemetry ingestion: {type(e).__name__}: {e}")
 
         # Update sensor_service cache
         try:

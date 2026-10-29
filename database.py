@@ -113,21 +113,35 @@ def execute_turso_pipeline(requests: List[Dict[str, Any]]) -> List[Dict[str, Any
                 parsed_results.append({"rows": [], "affected_row_count": 0, "last_insert_rowid": 0})
     return parsed_results
 
-def turso_query(sql: str, params: Optional[Sequence[Any]] = None) -> List[Dict[str, Any]]:
+def turso_query(sql: str, params: Optional[Sequence[Any]] = None, _retry_on_missing_table: bool = True) -> List[Dict[str, Any]]:
     stmt: Dict[str, Any] = {"sql": sql}
     if params:
         stmt["args"] = [_to_turso_arg(p) for p in params]
-    res = execute_turso_pipeline([{"type": "execute", "stmt": stmt}])
-    return res[0]["rows"] if res else []
+    try:
+        res = execute_turso_pipeline([{"type": "execute", "stmt": stmt}])
+        return res[0]["rows"] if res else []
+    except RuntimeError as e:
+        if _retry_on_missing_table and "no such table" in str(e).lower():
+            logger.warning("Turso table missing during query; attempting idempotent schema initialization.")
+            init_db(None)
+            return turso_query(sql, params, _retry_on_missing_table=False)
+        raise
 
-def turso_execute(sql: str, params: Optional[Sequence[Any]] = None) -> Tuple[int, int]:
+def turso_execute(sql: str, params: Optional[Sequence[Any]] = None, _retry_on_missing_table: bool = True) -> Tuple[int, int]:
     stmt: Dict[str, Any] = {"sql": sql}
     if params:
         stmt["args"] = [_to_turso_arg(p) for p in params]
-    res = execute_turso_pipeline([{"type": "execute", "stmt": stmt}])
-    if res:
-        return res[0]["last_insert_rowid"], res[0]["affected_row_count"]
-    return 0, 0
+    try:
+        res = execute_turso_pipeline([{"type": "execute", "stmt": stmt}])
+        if res:
+            return res[0]["last_insert_rowid"], res[0]["affected_row_count"]
+        return 0, 0
+    except RuntimeError as e:
+        if _retry_on_missing_table and "no such table" in str(e).lower():
+            logger.warning("Turso table missing during execute; attempting idempotent schema initialization.")
+            init_db(None)
+            return turso_execute(sql, params, _retry_on_missing_table=False)
+        raise
 
 # ----------------- Local SQLite Database Connection -----------------
 
@@ -800,6 +814,14 @@ def get_alerts(status_filter: Optional[str] = None, limit: int = 50, db_path: Op
         cursor = conn.cursor()
         cursor.execute(query_sql, params)
         return [dict(row) for row in cursor.fetchall()]
+    except sqlite3.OperationalError as e:
+        if "no such table" in str(e).lower():
+            logger.warning("Alerts table missing during get_alerts; auto-initializing schema.")
+            init_db(db_path)
+            cursor = conn.cursor()
+            cursor.execute(query_sql, params)
+            return [dict(row) for row in cursor.fetchall()]
+        raise
     finally:
         conn.close()
 
@@ -822,6 +844,46 @@ def get_active_alert(db_path: Optional[str] = None) -> Optional[Dict[str, Any]]:
         cursor.execute(query_sql)
         row = cursor.fetchone()
         return dict(row) if row else None
+    except sqlite3.OperationalError as e:
+        if "no such table" in str(e).lower():
+            logger.warning("Alerts table missing during get_active_alert; auto-initializing schema.")
+            init_db(db_path)
+            cursor = conn.cursor()
+            cursor.execute(query_sql)
+            row = cursor.fetchone()
+            return dict(row) if row else None
+        raise
+    finally:
+        conn.close()
+
+def get_ongoing_alert(db_path: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    """Retrieves the most recent ongoing alert (either active or acknowledged), if any."""
+    query_sql = """
+        SELECT id, timestamp, alert_type, measured_value, threshold_value, status, acknowledged_at
+        FROM alerts
+        WHERE status IN ('active', 'acknowledged')
+        ORDER BY id DESC
+        LIMIT 1;
+    """
+    if is_turso_active(db_path):
+        rows = turso_query(query_sql)
+        return rows[0] if rows else None
+
+    conn = get_connection(db_path)
+    try:
+        cursor = conn.cursor()
+        cursor.execute(query_sql)
+        row = cursor.fetchone()
+        return dict(row) if row else None
+    except sqlite3.OperationalError as e:
+        if "no such table" in str(e).lower():
+            logger.warning("Alerts table missing during get_ongoing_alert; auto-initializing schema.")
+            init_db(db_path)
+            cursor = conn.cursor()
+            cursor.execute(query_sql)
+            row = cursor.fetchone()
+            return dict(row) if row else None
+        raise
     finally:
         conn.close()
 
@@ -849,6 +911,15 @@ def create_alert(
             cursor = conn.cursor()
             cursor.execute(query_sql, params)
             return cursor.lastrowid
+    except sqlite3.OperationalError as e:
+        if "no such table" in str(e).lower():
+            logger.warning("Alerts table missing during create_alert; auto-initializing schema.")
+            init_db(db_path)
+            with conn:
+                cursor = conn.cursor()
+                cursor.execute(query_sql, params)
+                return cursor.lastrowid
+        raise
     finally:
         conn.close()
 
@@ -872,6 +943,15 @@ def acknowledge_alert(alert_id: int, db_path: Optional[str] = None) -> bool:
             cursor = conn.cursor()
             cursor.execute(query_sql, params)
             return cursor.rowcount > 0
+    except sqlite3.OperationalError as e:
+        if "no such table" in str(e).lower():
+            logger.warning("Alerts table missing during acknowledge_alert; auto-initializing schema.")
+            init_db(db_path)
+            with conn:
+                cursor = conn.cursor()
+                cursor.execute(query_sql, params)
+                return cursor.rowcount > 0
+        raise
     finally:
         conn.close()
 
@@ -892,6 +972,15 @@ def resolve_active_alerts(db_path: Optional[str] = None) -> int:
             cursor = conn.cursor()
             cursor.execute(query_sql)
             return cursor.rowcount
+    except sqlite3.OperationalError as e:
+        if "no such table" in str(e).lower():
+            logger.warning("Alerts table missing during resolve_active_alerts; auto-initializing schema.")
+            init_db(db_path)
+            with conn:
+                cursor = conn.cursor()
+                cursor.execute(query_sql)
+                return cursor.rowcount
+        raise
     finally:
         conn.close()
 
@@ -924,6 +1013,20 @@ def get_settings(db_path: Optional[str] = None) -> Dict[str, Any]:
             "temperature_threshold_c": Config.DEFAULT_TEMPERATURE_THRESHOLD_C,
             "sampling_interval_seconds": Config.SAMPLING_INTERVAL_SECONDS
         }
+    except sqlite3.OperationalError as e:
+        if "no such table" in str(e).lower():
+            logger.warning("Settings table missing during get_settings; auto-initializing schema.")
+            init_db(db_path)
+            cursor = conn.cursor()
+            cursor.execute(query_sql)
+            row = cursor.fetchone()
+            if row:
+                return dict(row)
+            return {
+                "temperature_threshold_c": Config.DEFAULT_TEMPERATURE_THRESHOLD_C,
+                "sampling_interval_seconds": Config.SAMPLING_INTERVAL_SECONDS
+            }
+        raise
     finally:
         conn.close()
 

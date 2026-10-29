@@ -19,25 +19,15 @@ class AlertService:
         Evaluates a valid temperature reading against the current threshold.
         Avoids creating duplicate alerts during a continuous elevated event.
         Resolves active alerts when temperature safely drops below threshold.
+        Compatible with both Turso and local SQLite persistent backends.
         """
-        settings = database.get_settings(db_path=db_path)
-        threshold = settings.get("temperature_threshold_c", Config.DEFAULT_TEMPERATURE_THRESHOLD_C)
-        hysteresis = Config.ALERT_CLEAR_HYSTERESIS_C
-
-        conn = database.get_connection(db_path=db_path)
         try:
-            cursor = conn.cursor()
-            # Check for any ongoing alert (either active or acknowledged)
-            cursor.execute(
-                """
-                SELECT id, timestamp, alert_type, measured_value, threshold_value, status, acknowledged_at
-                FROM alerts
-                WHERE status IN ('active', 'acknowledged')
-                ORDER BY id DESC
-                LIMIT 1;
-                """
-            )
-            ongoing_alert = cursor.fetchone()
+            settings = database.get_settings(db_path=db_path)
+            threshold = settings.get("temperature_threshold_c", Config.DEFAULT_TEMPERATURE_THRESHOLD_C)
+            hysteresis = Config.ALERT_CLEAR_HYSTERESIS_C
+
+            # Check for any ongoing alert (either active or acknowledged) via database abstraction
+            ongoing_alert = database.get_ongoing_alert(db_path=db_path)
 
             if temperature_c >= threshold:
                 # Temperature is above or equal to threshold
@@ -78,8 +68,9 @@ class AlertService:
                     )
                     database.resolve_active_alerts(db_path=db_path)
                 return None
-        finally:
-            conn.close()
+        except Exception as e:
+            logger.error(f"Non-fatal error in AlertService.evaluate_reading: {type(e).__name__}: {e}")
+            return None
 
     @staticmethod
     def acknowledge(alert_id: int, db_path: Optional[str] = None) -> bool:
