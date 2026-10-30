@@ -3,6 +3,7 @@ import json
 from app import create_app
 from config import Config
 import database
+from datetime import datetime, timezone, timedelta
 
 @pytest.fixture
 def app_client(tmp_path):
@@ -63,6 +64,37 @@ def test_api_readings_latest(app_client):
     assert data["latest"]["temperature_c"] == 23.5
     assert "trend" in data
     assert "today_stats" in data
+
+def test_telemetry_freshness_states_and_no_cache(app_client):
+    client, db_file = app_client
+
+    cases = [
+        (30, True, False, False, "Live Data"),
+        (80, False, True, False, "Sensor Delayed"),
+        (180, False, False, True, "Sensor Offline"),
+    ]
+
+    for age_seconds, expected_live, expected_stale, expected_offline, expected_label in cases:
+        timestamp = (datetime.now(timezone.utc) - timedelta(seconds=age_seconds)).isoformat()
+        database.insert_reading(
+            31.2,
+            source="raspberry_pi_dht11",
+            validity_status="valid",
+            timestamp=timestamp,
+            humidity_pct=59.0,
+            sensor_type="dht11",
+            db_path=db_file,
+        )
+        response = client.get("/api/readings/latest")
+        assert response.status_code == 200
+        data = response.get_json()
+        freshness = data["freshness"]
+        assert freshness["is_live"] is expected_live
+        assert freshness["is_stale"] is expected_stale
+        assert freshness["is_offline"] is expected_offline
+        assert freshness["status_label"] == expected_label
+        assert "no-store" in response.headers.get("Cache-Control", "")
+
 
 def test_api_readings_range(app_client):
     client, _ = app_client

@@ -88,7 +88,7 @@
    */
   async function fetchLivePulse() {
     try {
-      const res = await fetch("/api/readings/latest");
+      const res = await fetch("/api/readings/latest", { cache: "no-store" });
       if (!res.ok) throw new Error("HTTP " + res.status);
       const data = await res.json();
 
@@ -103,6 +103,7 @@
 
       const isLive = freshness.is_live === true;
       const isStale = freshness.is_stale === true;
+      const isOffline = freshness.is_offline === true || (!isLive && !isStale);
       const hasData = latest !== null && latest !== undefined;
 
       const tempValEl = document.getElementById("liveTempVal");
@@ -122,9 +123,9 @@
         const hVal = (latest.humidity_pct !== null && latest.humidity_pct !== undefined) ? Number(latest.humidity_pct).toFixed(1) : "--.-";
         const pVal = (latest.pressure_hpa !== null && latest.pressure_hpa !== undefined) ? Number(latest.pressure_hpa).toFixed(1) : "----.-";
 
-        if (tempValEl) tempValEl.textContent = isStale ? `${tVal} (Stale)` : tVal;
-        if (humValEl) humValEl.textContent = isStale ? `${hVal} (Stale)` : hVal;
-        if (pressValEl) pressValEl.textContent = isStale ? `${pVal} (Stale)` : pVal;
+        if (tempValEl) tempValEl.textContent = isOffline ? `${tVal} (Offline)` : (isStale ? `${tVal} (Delayed)` : tVal);
+        if (humValEl) humValEl.textContent = isOffline ? `${hVal} (Offline)` : (isStale ? `${hVal} (Delayed)` : hVal);
+        if (pressValEl) pressValEl.textContent = isOffline ? `${pVal} (Offline)` : (isStale ? `${pVal} (Delayed)` : pVal);
 
         if (heatInfo) {
           heatInfo.textContent = (latest.heat_index_c !== null && latest.heat_index_c !== undefined) ? `Heat Index: ${Number(latest.heat_index_c).toFixed(1)}°C` : "Heat Index: --°C";
@@ -132,9 +133,12 @@
 
         // Temperature status & threshold evaluation
         if (tempStatus && tempStatusText) {
-          if (isStale) {
+          if (isOffline) {
             tempStatus.className = "status-pill offline";
-            tempStatusText.textContent = "Sensor Offline (Stale Reading)";
+            tempStatusText.textContent = "Sensor Offline";
+          } else if (isStale) {
+            tempStatus.className = "status-pill offline";
+            tempStatusText.textContent = "Telemetry Delayed";
           } else if (latest.temperature_c >= currentThresholdC) {
             tempStatus.className = "status-pill offline";
             tempStatusText.textContent = `WARNING: ≥ ${currentThresholdC.toFixed(1)}°C Exceeded`;
@@ -146,9 +150,12 @@
 
         // Humidity status
         if (humStatus && humStatusText) {
-          if (isStale) {
+          if (isOffline) {
             humStatus.className = "status-pill offline";
             humStatusText.textContent = "DHT11 Offline";
+          } else if (isStale) {
+            humStatus.className = "status-pill offline";
+            humStatusText.textContent = "DHT11 Delayed";
           } else {
             humStatus.className = "status-pill online";
             humStatusText.textContent = latest.humidity_pct !== null ? "DHT11 Active" : "No Humidity";
@@ -160,9 +167,12 @@
           if (latest.pressure_hpa === null || latest.pressure_hpa === undefined) {
             pressStatus.className = "status-pill offline";
             pressStatusText.textContent = "BMP280 Disconnected";
+          } else if (isOffline) {
+            pressStatus.className = "status-pill offline";
+            pressStatusText.textContent = "Pressure Offline";
           } else if (isStale) {
             pressStatus.className = "status-pill offline";
-            pressStatusText.textContent = "Pressure Stale";
+            pressStatusText.textContent = "Pressure Delayed";
           } else {
             pressStatus.className = "status-pill online";
             pressStatusText.textContent = "Nominal Barometric Range";

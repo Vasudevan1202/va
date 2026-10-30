@@ -175,7 +175,7 @@
       if (icon) icon.classList.add("va-spinner");
     }
 
-    fetch("/api/status")
+    fetch("/api/status", { cache: "no-store" })
       .then(res => {
         if (!res.ok) throw new Error("HTTP " + res.status);
         return res.json();

@@ -250,6 +250,15 @@ def create_app(test_config=None) -> Flask:
         """Redirect legacy project/team routes to main overview dashboard."""
         return redirect(url_for("dashboard"), code=302)
 
+    # Prevent Vercel/CDN/browser caches from serving old telemetry status.
+    @app.after_request
+    def disable_api_response_caching(response):
+        if request.path.startswith("/api/"):
+            response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
+        return response
+
     # ==========================================
     # REST API Endpoints
     # ==========================================
@@ -292,13 +301,18 @@ def create_app(test_config=None) -> Flask:
                 ts = datetime.fromisoformat(latest["timestamp"].replace("Z", "+00:00"))
                 now = datetime.now(timezone.utc)
                 age_seconds = max(0.0, round((now - ts).total_seconds(), 1))
-                if age_seconds < 180.0 and latest.get("source") not in ("demo", "simulated"):
+                is_real_reading = latest.get("source") not in ("demo", "simulated")
+                if is_real_reading and age_seconds <= 45.0:
                     is_live = True
                     is_stale = False
                     status_label = "Live Data"
-                else:
+                elif is_real_reading and age_seconds <= 120.0:
                     is_live = False
                     is_stale = True
+                    status_label = "Sensor Delayed"
+                else:
+                    is_live = False
+                    is_stale = False
                     status_label = "Sensor Offline"
             except Exception:
                 age_seconds = None
@@ -334,6 +348,7 @@ def create_app(test_config=None) -> Flask:
                 "age_seconds": age_seconds,
                 "is_live": is_live,
                 "is_stale": is_stale,
+                "is_offline": not is_live and not is_stale,
                 "status_label": status_label,
                 "last_update_iso": latest.get("timestamp") if latest else None
             },
