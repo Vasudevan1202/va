@@ -87,7 +87,7 @@
    */
   async function fetchLatestData() {
     try {
-      const res = await fetch("/api/readings/latest");
+      const res = await fetch("/api/readings/latest", { cache: "no-store" });
       if (!res.ok) throw new Error("Failed to fetch latest readings");
       const data = await res.json();
       updateDashboardUI(data);
@@ -149,19 +149,20 @@
       if (sidebarSub) sidebarSub.textContent = (latest && latest.sensor_type === "dht11") ? "Raspberry Pi DHT11" : (sensor.sensor_type || "Raspberry Pi DHT11");
     } else if (isStale && hasData) {
       if (conditionsPill) conditionsPill.className = "live-status-pill stale";
-      if (conditionsPillText) conditionsPillText.textContent = "Sensor Offline";
+      if (conditionsPillText) conditionsPillText.textContent = "Delayed Data";
 
       if (sidebarDot) sidebarDot.className = "status-indicator-dot warning";
-      if (sidebarTitle) sidebarTitle.textContent = "Sensor Offline";
-      const ageStr = freshness.age_seconds ? Math.round(freshness.age_seconds / 60) + "m ago" : "stale";
-      if (sidebarSub) sidebarSub.textContent = `Stale reading (${ageStr})`;
+      if (sidebarTitle) sidebarTitle.textContent = "Sensor Delayed";
+      const ageStr = freshness.age_seconds !== null && freshness.age_seconds !== undefined ? Math.round(freshness.age_seconds) + "s ago" : "stale";
+      if (sidebarSub) sidebarSub.textContent = `Last reading ${ageStr}`;
     } else {
       if (conditionsPill) conditionsPill.className = "live-status-pill offline";
-      if (conditionsPillText) conditionsPillText.textContent = "No Live Reading";
+      if (conditionsPillText) conditionsPillText.textContent = hasData ? "Sensor Offline" : "No Live Reading";
 
       if (sidebarDot) sidebarDot.className = "status-indicator-dot offline";
       if (sidebarTitle) sidebarTitle.textContent = "Sensor Offline";
-      if (sidebarSub) sidebarSub.textContent = "Awaiting ingestion telemetry";
+      const ageStr = freshness.age_seconds !== null && freshness.age_seconds !== undefined ? Math.round(freshness.age_seconds) + "s ago" : "no readings";
+      if (sidebarSub) sidebarSub.textContent = `Last reading: ${ageStr}`;
     }
 
     // Temperature Condition Card
@@ -274,7 +275,7 @@
       }
       if (dhtStatusPill) {
         const dhtAge = dht.timestamp ? (Date.now() - new Date(dht.timestamp).getTime()) / 1000 : 999999;
-        if (dhtAge < 180) {
+        if (dhtAge <= 45) {
           dhtStatusPill.className = "status-pill online py-1 px-2";
           if (dhtStatusText) dhtStatusText.textContent = "Ingesting";
         } else {
